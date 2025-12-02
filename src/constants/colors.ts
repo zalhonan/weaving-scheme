@@ -1,7 +1,13 @@
 /**
+ * Special value for eraser tool
+ */
+export const ERASER_TOOL = 'eraser' as const;
+
+/**
  * 12-color palette based on Google Material Design.
  * Arranged in 2 rows of 6 colors.
  * White is second (default for cell highlighting).
+ * Last slot is eraser tool.
  */
 export const COLOR_PALETTE = [
   // Row 1
@@ -17,10 +23,17 @@ export const COLOR_PALETTE = [
   '#5D4037', // Brown
   '#E91E63', // Pink
   '#607D8B', // Blue Grey
-  '#FFC107', // Amber
+  ERASER_TOOL, // Eraser
 ] as const;
 
 export const DEFAULT_COLOR = COLOR_PALETTE[0];
+
+/**
+ * Check if current color is eraser tool
+ */
+export function isEraser(color: string): boolean {
+  return color === ERASER_TOOL;
+}
 
 /**
  * Convert a hex color to a pale (light) version for cell highlighting.

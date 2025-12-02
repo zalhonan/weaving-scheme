@@ -8,6 +8,7 @@ import {
   getFullColumnLines,
 } from '../../utils/canvas/advancedDrawing';
 import { floodFill } from '../../utils/canvas/floodFill';
+import { isEraser } from '../../constants/colors';
 
 type MouseButton = 'left' | 'right' | 'middle' | null;
 type MovementDirection = 'horizontal' | 'vertical' | null;
@@ -24,6 +25,7 @@ export function useCanvasInteraction(
     width,
     height,
     lines,
+    currentColor,
     toggleLine,
     removeLine,
     addMultipleLines,
@@ -98,6 +100,10 @@ export function useCanvasInteraction(
 
       if (!isLeftButton && !isRightButton) return;
 
+      // Check if eraser is selected - treat left click as erase
+      const eraserSelected = isEraser(currentColor);
+      const shouldErase = isRightButton || (isLeftButton && eraserSelected);
+
       activeButton.current = isLeftButton ? 'left' : 'right';
 
       const hit = hitTest(x, y, offsetX, offsetY, cellSize, width, height);
@@ -112,7 +118,7 @@ export function useCanvasInteraction(
       // Handle tail clicks (US-3.3)
       if (hit.type === 'row-tail') {
         const rowLines = getFullRowLines(hit.y, width);
-        if (isRightButton) {
+        if (shouldErase) {
           removeMultipleLines(rowLines);
         } else {
           addMultipleLines(rowLines);
@@ -122,7 +128,7 @@ export function useCanvasInteraction(
 
       if (hit.type === 'col-tail') {
         const colLines = getFullColumnLines(hit.x, height);
-        if (isRightButton) {
+        if (shouldErase) {
           removeMultipleLines(colLines);
         } else {
           addMultipleLines(colLines);
@@ -132,7 +138,7 @@ export function useCanvasInteraction(
 
       // Handle row number clicks (US-4.3)
       if (hit.type === 'row-number') {
-        if (isRightButton) {
+        if (shouldErase) {
           removeRowHighlight(hit.y);
         } else {
           setRowHighlight(hit.y);
@@ -142,7 +148,7 @@ export function useCanvasInteraction(
 
       // Handle column number clicks (US-4.3)
       if (hit.type === 'col-number') {
-        if (isRightButton) {
+        if (shouldErase) {
           removeColHighlight(hit.x);
         } else {
           setColHighlight(hit.x);
@@ -200,7 +206,7 @@ export function useCanvasInteraction(
         return;
       }
 
-      handleLineInteraction(hit, isRightButton);
+      handleLineInteraction(hit, shouldErase);
     },
     [
       getCanvasCoords,
@@ -210,6 +216,7 @@ export function useCanvasInteraction(
       width,
       height,
       lines,
+      currentColor,
       handleLineInteraction,
       addMultipleLines,
       removeMultipleLines,
@@ -311,7 +318,10 @@ export function useCanvasInteraction(
             allowedHit.x !== lastHit.current.x ||
             allowedHit.y !== lastHit.current.y)
         ) {
-          handleLineInteraction(allowedHit, activeButton.current === 'right');
+          // Check if eraser is selected - treat left drag as erase
+          const eraserSelected = isEraser(currentColor);
+          const shouldErase = activeButton.current === 'right' || (activeButton.current === 'left' && eraserSelected);
+          handleLineInteraction(allowedHit, shouldErase);
           lastHit.current = allowedHit;
         }
       }
@@ -325,6 +335,7 @@ export function useCanvasInteraction(
       cellSize,
       width,
       height,
+      currentColor,
       handleLineInteraction,
     ]
   );

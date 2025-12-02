@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState, useSyncExternalStore } from 'react';
 import { useUIStore, useCanvasStore, useTemporalStore } from '../../store';
-import { COLOR_PALETTE } from '../../constants/colors';
+import { COLOR_PALETTE, ERASER_TOOL, isEraser } from '../../constants/colors';
 import styles from './MobileToolbar.module.css';
 
 export const MobileToolbar: React.FC = () => {
@@ -171,11 +171,26 @@ export const MobileToolbar: React.FC = () => {
 
       {/* Current color / color picker */}
       <button
-        className={styles.colorButton}
-        style={{ backgroundColor: currentColor }}
+        className={`${styles.colorButton} ${isEraser(currentColor) ? styles.eraserButton : ''}`}
+        style={isEraser(currentColor) ? { backgroundColor: '#FFFFFF' } : { backgroundColor: currentColor }}
         onClick={() => setShowColorPicker(!showColorPicker)}
-        aria-label="Выбрать цвет"
-      />
+        aria-label={isEraser(currentColor) ? 'Ластик' : 'Выбрать цвет'}
+      >
+        {isEraser(currentColor) && (
+          <svg
+            className={styles.eraserIconSmall}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M20 20H7L3 16C2.5 15.5 2.5 14.5 3 14L13 4C13.5 3.5 14.5 3.5 15 4L21 10C21.5 10.5 21.5 11.5 21 12L13 20" />
+            <path d="M6 11L13 18" />
+          </svg>
+        )}
+      </button>
 
       {/* Menu button */}
       <button
@@ -198,20 +213,38 @@ export const MobileToolbar: React.FC = () => {
       {/* Color picker popup */}
       {showColorPicker && (
         <div className={styles.colorPicker}>
-          {COLOR_PALETTE.map((color) => (
-            <button
-              key={color}
-              className={`${styles.colorSwatch} ${
-                currentColor === color ? styles.colorSwatchSelected : ''
-              }`}
-              style={{ backgroundColor: color }}
-              onClick={() => {
-                setCurrentColor(color);
-                setShowColorPicker(false);
-              }}
-              aria-label={`Цвет ${color}`}
-            />
-          ))}
+          {COLOR_PALETTE.map((color) => {
+            const isEraserItem = color === ERASER_TOOL;
+            return (
+              <button
+                key={color}
+                className={`${styles.colorSwatch} ${
+                  currentColor === color ? styles.colorSwatchSelected : ''
+                } ${isEraserItem ? styles.eraserSwatchMobile : ''}`}
+                style={isEraserItem ? { backgroundColor: '#FFFFFF' } : { backgroundColor: color }}
+                onClick={() => {
+                  setCurrentColor(color);
+                  setShowColorPicker(false);
+                }}
+                aria-label={isEraserItem ? 'Ластик' : `Цвет ${color}`}
+              >
+                {isEraserItem && (
+                  <svg
+                    className={styles.eraserIconSmall}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M20 20H7L3 16C2.5 15.5 2.5 14.5 3 14L13 4C13.5 3.5 14.5 3.5 15 4L21 10C21.5 10.5 21.5 11.5 21 12L13 20" />
+                    <path d="M6 11L13 18" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

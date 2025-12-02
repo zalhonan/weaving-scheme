@@ -469,6 +469,19 @@
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.15);
 }
 
+.eraserSwatch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ccc;
+}
+
+.eraserIcon {
+  width: 18px;
+  height: 18px;
+  color: #666;
+}
+
 /* Export/Import/Print */
 .exportImportButtons {
   display: flex;

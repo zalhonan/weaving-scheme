@@ -137,6 +137,26 @@
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2);
 }
 
+.eraserButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #ccc;
+}
+
+.eraserSwatchMobile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ccc;
+}
+
+.eraserIconSmall {
+  width: 20px;
+  height: 20px;
+  color: #666;
+}
+
 /* Hide on desktop by default - shown via media query in App */
 @media (min-width: 769px) {
   .toolbar,
