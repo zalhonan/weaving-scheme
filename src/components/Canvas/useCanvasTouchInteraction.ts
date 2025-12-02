@@ -7,6 +7,7 @@ import {
   getFullRowLines,
   getFullColumnLines,
 } from '../../utils/canvas/advancedDrawing';
+import { floodFill } from '../../utils/canvas/floodFill';
 import {
   GestureState,
   createInitialGestureState,
@@ -34,6 +35,7 @@ export function useCanvasTouchInteraction(
   const {
     width,
     height,
+    lines,
     toggleLine,
     removeLine,
     addMultipleLines,
@@ -63,6 +65,12 @@ export function useCanvasTouchInteraction(
   // Multi-touch tracking for undo/redo gestures
   const multiTapStartTime = useRef<number | null>(null);
   const multiTapTouchCount = useRef<number>(0);
+
+  // Double-tap tracking for flood fill
+  const lastTapTime = useRef<number>(0);
+  const lastTapPos = useRef<{ x: number; y: number } | null>(null);
+  const DOUBLE_TAP_DELAY = 300; // ms
+  const DOUBLE_TAP_DISTANCE = 30; // px
 
   const getCanvasRect = useCallback((): DOMRect | null => {
     const canvas = canvasRef.current;
@@ -447,6 +455,86 @@ export function useCanvasTouchInteraction(
       if (!rect) return;
 
       const remainingTouches = touchListToPoints(e.touches, rect);
+      const now = Date.now();
+
+      // Check for single-finger double-tap (flood fill)
+      if (
+        remainingTouches.length === 0 &&
+        gestureState.current.touches.length === 1 &&
+        startTouchPos.current &&
+        multiTapTouchCount.current <= 1 // Only single finger touches
+      ) {
+        const touchPos = startTouchPos.current;
+        const timeSinceLastTap = now - lastTapTime.current;
+        const wasQuickTap = (now - (gestureState.current.startTimestamp || 0)) < TAP_MAX_DURATION_MS;
+
+        // Check if moved very little (was a tap, not a draw)
+        const totalMovement = Math.abs(accumulatedDelta.current.dx) + Math.abs(accumulatedDelta.current.dy);
+        const wasTap = wasQuickTap && totalMovement < TAP_MAX_MOVEMENT_PX;
+
+        if (wasTap) {
+          // Check if it's a double-tap
+          if (
+            lastTapPos.current &&
+            timeSinceLastTap < DOUBLE_TAP_DELAY
+          ) {
+            const tapDistance = Math.sqrt(
+              Math.pow(touchPos.x - lastTapPos.current.x, 2) +
+              Math.pow(touchPos.y - lastTapPos.current.y, 2)
+            );
+
+            if (tapDistance < DOUBLE_TAP_DISTANCE) {
+              // Double-tap detected! Check if NOT on a line before triggering flood fill
+              const tapHit = hitTest(
+                touchPos.x,
+                touchPos.y,
+                offsetX,
+                offsetY,
+                cellSize,
+                width,
+                height,
+                TOUCH_HIT_TOLERANCE
+              );
+
+              // Only trigger flood fill if tap was NOT on a line
+              if (tapHit.type !== 'horizontal-line' && tapHit.type !== 'vertical-line') {
+                const { gridX, gridY } = screenToGrid(
+                  touchPos.x,
+                  touchPos.y,
+                  offsetX,
+                  offsetY,
+                  cellSize
+                );
+                const cellX = Math.floor(gridX);
+                const cellY = Math.floor(gridY);
+
+                if (cellX >= 0 && cellX < width && cellY >= 0 && cellY < height) {
+                  const result = floodFill(cellX, cellY, lines, width, height);
+                  if (result.success) {
+                    addMultipleLines(result.lines);
+                    triggerHapticFeedback(15);
+                    showToast('Заливка', 'success', 1000);
+                  } else if (result.error) {
+                    showToast(result.error, 'error', 2000);
+                  }
+                }
+              }
+
+              // Reset double-tap tracking
+              lastTapTime.current = 0;
+              lastTapPos.current = null;
+            } else {
+              // Different position - start new tap sequence
+              lastTapTime.current = now;
+              lastTapPos.current = touchPos;
+            }
+          } else {
+            // First tap or too slow - record for potential double-tap
+            lastTapTime.current = now;
+            lastTapPos.current = touchPos;
+          }
+        }
+      }
 
       // Check for multi-tap gestures (undo/redo)
       if (multiTapStartTime.current !== null) {
@@ -522,6 +610,8 @@ export function useCanvasTouchInteraction(
       cellSize,
       width,
       height,
+      lines,
+      addMultipleLines,
       removeRowHighlight,
       removeColHighlight,
       removeMultipleLines,

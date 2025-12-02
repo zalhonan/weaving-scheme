@@ -156,24 +156,7 @@ export function useCanvasInteraction(
         return;
       }
 
-      // Handle Ctrl+click for flood fill (US-3.2)
-      if (e.ctrlKey && isLeftButton) {
-        const { gridX, gridY } = screenToGrid(x, y, offsetX, offsetY, cellSize);
-        const cellX = Math.floor(gridX);
-        const cellY = Math.floor(gridY);
-
-        if (cellX >= 0 && cellX < width && cellY >= 0 && cellY < height) {
-          const result = floodFill(cellX, cellY, lines, width, height);
-          if (result.success) {
-            addMultipleLines(result.lines);
-          } else if (result.error) {
-            showToast(result.error, 'error', 3000);
-          }
-        }
-        return;
-      }
-
-      // Handle Shift+click for line extension (US-3.1)
+      // Handle Shift+click for line extension (US-3.1) - only for line hits
       if (e.shiftKey && isLeftButton) {
         if (hit.type === 'horizontal-line') {
           const linesToAdd = extendLineToNearest(
@@ -202,6 +185,23 @@ export function useCanvasInteraction(
             addMultipleLines(linesToAdd);
           }
           return;
+        }
+        // If Shift+click not on a line, fall through to normal handling
+      }
+
+      // Handle Ctrl+click for flood fill (US-3.2) - only when NOT clicking on a line
+      if (e.ctrlKey && isLeftButton && hit.type !== 'horizontal-line' && hit.type !== 'vertical-line') {
+        const { gridX, gridY } = screenToGrid(x, y, offsetX, offsetY, cellSize);
+        const cellX = Math.floor(gridX);
+        const cellY = Math.floor(gridY);
+
+        if (cellX >= 0 && cellX < width && cellY >= 0 && cellY < height) {
+          const result = floodFill(cellX, cellY, lines, width, height);
+          if (result.success) {
+            addMultipleLines(result.lines);
+          } else if (result.error) {
+            showToast(result.error, 'error', 3000);
+          }
         }
         return;
       }
