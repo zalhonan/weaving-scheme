@@ -357,7 +357,7 @@ export function useCanvasInteraction(
 
   const handleWheel = useCallback(
     (e: React.WheelEvent<HTMLCanvasElement>) => {
-      e.preventDefault();
+      // Note: preventDefault is called in Canvas.tsx useEffect with passive: false
       const { x, y } = getCanvasCoords(e);
       const delta = e.deltaY > 0 ? -2 : 2;
       zoom(delta, x, y);

@@ -10,3 +10,16 @@
   display: flex;
   overflow: hidden;
 }
+
+/* Mobile layout adjustments */
+@media (max-width: 768px) {
+  .app {
+    flex-direction: column;
+  }
+
+  .main {
+    /* Full screen on mobile since sidebar is overlay */
+    width: 100%;
+    height: 100%;
+  }
+}

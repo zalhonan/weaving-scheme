@@ -19,6 +19,7 @@ export interface HitTestResult {
 /**
  * Determine what the user clicked on.
  * Returns the type of hit and grid coordinates.
+ * @param tolerance - Optional hit tolerance override (default from constants, larger for touch)
  */
 export function hitTest(
   screenX: number,
@@ -27,7 +28,8 @@ export function hitTest(
   offsetY: number,
   cellSize: number,
   canvasWidth: number,
-  canvasHeight: number
+  canvasHeight: number,
+  tolerance?: number
 ): HitTestResult {
   const { gridX, gridY } = screenToGrid(
     screenX,
@@ -41,13 +43,15 @@ export function hitTest(
   const gridAreaStartX = offsetX + numberAreaStart;
   const gridAreaStartY = offsetY + numberAreaStart;
 
+  const hitTolerance = tolerance ?? CANVAS_CONSTANTS.HIT_TOLERANCE;
+
   // Check if in left number/tail area (x < grid start)
   if (screenX < gridAreaStartX && screenX >= offsetX) {
     const rowIndex = Math.floor(gridY);
     if (rowIndex >= 0 && rowIndex < canvasHeight) {
       // Check if near a horizontal grid line (tail)
       const distToLine = Math.abs(gridY - Math.round(gridY));
-      if (distToLine < CANVAS_CONSTANTS.HIT_TOLERANCE) {
+      if (distToLine < hitTolerance) {
         const lineY = Math.round(gridY);
         if (lineY >= 0 && lineY <= canvasHeight) {
           return { type: 'row-tail', x: 0, y: lineY };
@@ -63,7 +67,7 @@ export function hitTest(
     if (colIndex >= 0 && colIndex < canvasWidth) {
       // Check if near a vertical grid line (tail)
       const distToLine = Math.abs(gridX - Math.round(gridX));
-      if (distToLine < CANVAS_CONSTANTS.HIT_TOLERANCE) {
+      if (distToLine < hitTolerance) {
         const lineX = Math.round(gridX);
         if (lineX >= 0 && lineX <= canvasWidth) {
           return { type: 'col-tail', x: lineX, y: 0 };
@@ -87,9 +91,7 @@ export function hitTest(
   const distToHorizontal = Math.abs(gridY - Math.round(gridY));
   const distToVertical = Math.abs(gridX - Math.round(gridX));
 
-  const tolerance = CANVAS_CONSTANTS.HIT_TOLERANCE;
-
-  if (distToHorizontal < tolerance && distToVertical < tolerance) {
+  if (distToHorizontal < hitTolerance && distToVertical < hitTolerance) {
     // Near intersection - pick closer one
     if (distToHorizontal < distToVertical) {
       const lineY = Math.round(gridY);
@@ -116,7 +118,7 @@ export function hitTest(
     }
   }
 
-  if (distToHorizontal < tolerance) {
+  if (distToHorizontal < hitTolerance) {
     const lineY = Math.round(gridY);
     const cellX = Math.floor(gridX);
     if (
@@ -129,7 +131,7 @@ export function hitTest(
     }
   }
 
-  if (distToVertical < tolerance) {
+  if (distToVertical < hitTolerance) {
     const lineX = Math.round(gridX);
     const cellY = Math.floor(gridY);
     if (

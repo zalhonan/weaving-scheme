@@ -4,8 +4,23 @@
   height: 100%;
   cursor: crosshair;
   background-color: #ffffff;
+  /* Touch optimizations */
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .canvas.panning {
   cursor: grabbing;
+}
+
+/* Visual feedback for touch drawing */
+.canvas.touchDrawing {
+  cursor: crosshair;
+}
+
+.canvas.touchErasing {
+  cursor: crosshair;
 }
