@@ -1,0 +1,438 @@
+.sidebar {
+  position: relative;
+  width: 280px;
+  min-width: 280px;
+  background-color: #f8f9fa;
+  border-right: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.2s ease, min-width 0.2s ease;
+}
+
+.sidebar.collapsed {
+  width: 40px;
+  min-width: 40px;
+}
+
+.toggleButton {
+  position: absolute;
+  top: 12px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: 1px solid #e0e0e0;
+  background: #ffffff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s;
+}
+
+.sidebar.collapsed .toggleButton {
+  right: 8px;
+}
+
+.toggleButton:hover {
+  background-color: #f0f0f0;
+}
+
+.content {
+  padding: 16px;
+  padding-top: 48px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 24px 0;
+  color: #333;
+}
+
+.section {
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: #555;
+}
+
+.statsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.statItem {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.statLabel {
+  color: #666;
+}
+
+.statValue {
+  color: #333;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Canvas Size Control */
+.exactSizeControl {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.exactSizeInputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.exactSizeField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.exactSizeLabel {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.exactSizeInput {
+  width: 70px;
+  height: 32px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 14px;
+  padding: 0 8px;
+}
+
+.exactSizeInput:focus {
+  outline: none;
+  border-color: #999;
+}
+
+.exactSizeInput::-webkit-inner-spin-button,
+.exactSizeInput::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.exactSizeSeparator {
+  font-size: 16px;
+  color: #666;
+  padding-bottom: 6px;
+}
+
+.exactSizeButton {
+  width: 100%;
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.exactSizeButton:hover:not(:disabled) {
+  background-color: #f5f5f5;
+  border-color: #ccc;
+}
+
+.exactSizeButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.relativeSizeLabel {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.sizeInfo {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.sizeControlCross {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sizeControlRow {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.sizeControlCell {
+  width: 76px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.sizeControlGroup {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.sizeControlGroupCenter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.sizeButton {
+  width: 22px;
+  height: 22px;
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s;
+}
+
+.sizeButton:hover {
+  background-color: #f0f0f0;
+}
+
+.sizeButtonCenter {
+  width: 50px;
+  height: 22px;
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s;
+}
+
+.sizeButtonCenter:hover {
+  background-color: #f0f0f0;
+}
+
+.sizeInput {
+  width: 32px;
+  height: 22px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 12px;
+  padding: 0 2px;
+}
+
+.sizeInput::-webkit-inner-spin-button,
+.sizeInput::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.sizeInputCenter {
+  width: 50px;
+  height: 22px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 12px;
+  padding: 0 2px;
+}
+
+.sizeInputCenter::-webkit-inner-spin-button,
+.sizeInputCenter::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Undo/Redo */
+.undoRedoButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.undoRedoButton {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #555;
+  transition: background-color 0.15s;
+}
+
+.undoRedoButton:hover:not(:disabled) {
+  background-color: #f0f0f0;
+}
+
+.undoRedoButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Hotkeys Info */
+.collapsibleHeader {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.collapsibleHeader .sectionTitle {
+  margin: 0;
+}
+
+.expandIcon {
+  font-size: 10px;
+  color: #666;
+}
+
+.hotkeysList {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hotkeyItem {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+.hotkeyKeys {
+  font-weight: 500;
+  color: #333;
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.hotkeyDescription {
+  color: #666;
+}
+
+/* Color Palette */
+.colorPalette {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+
+.colorSwatch {
+  width: 32px;
+  height: 32px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.colorSwatch:hover {
+  transform: scale(1.1);
+}
+
+.colorSwatchSelected {
+  border-color: #333;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.15);
+}
+
+/* Export/Import/Print */
+.exportImportButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.exportImportButton {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #555;
+  transition: background-color 0.15s;
+}
+
+.exportImportButton:hover {
+  background-color: #f0f0f0;
+}
+
+.printSettings {
+  padding: 8px 0;
+}
+
+.printSettingsLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #555;
+}
+
+.printSettingsInput {
+  width: 60px;
+  height: 28px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 13px;
+  margin-left: 8px;
+}
+
+.printSettingsInput:focus {
+  outline: none;
+  border-color: #999;
+}
+
+.printSettingsInput::-webkit-inner-spin-button,
+.printSettingsInput::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

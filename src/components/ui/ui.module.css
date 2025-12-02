@@ -1,0 +1,145 @@
+/* Button */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.button--small {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.button--medium {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.button--default {
+  background-color: #ffffff;
+  color: #333;
+}
+
+.button--default:hover {
+  background-color: #f5f5f5;
+}
+
+.button--primary {
+  background-color: #1976d2;
+  border-color: #1976d2;
+  color: #ffffff;
+}
+
+.button--primary:hover {
+  background-color: #1565c0;
+}
+
+.button--danger {
+  background-color: #ffffff;
+  border-color: #d32f2f;
+  color: #d32f2f;
+}
+
+.button--danger:hover {
+  background-color: #fef2f2;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Toast */
+.toastContainer {
+  position: fixed;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1000;
+  transition: left 0.2s ease;
+}
+
+.toast {
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.toast--info {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+.toast--success {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.toast--error {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+/* Dialog */
+.dialogOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.dialogTitle {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.dialogMessage {
+  margin: 0 0 24px 0;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+}
+
+.dialogActions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
