@@ -7,6 +7,7 @@ import { UndoRedo } from './UndoRedo';
 import { HotkeysInfo } from './HotkeysInfo';
 import { ColorPalette } from './ColorPalette';
 import { ExportImport } from './ExportImport';
+import config from '../../../config.json';
 import styles from './Sidebar.module.css';
 
 // Helper to check if we're on mobile
@@ -85,6 +86,7 @@ export const Sidebar: React.FC = () => {
         {(isOpen || !isMobile) && !sidebarCollapsed && (
           <div className={styles.content}>
             <h2 className={styles.title}>Weaving Scheme</h2>
+            <span className={styles.version}>{config.version}</span>
             <ColorPalette />
             <Statistics />
             <CanvasSizeControl />

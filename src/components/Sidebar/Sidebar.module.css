@@ -139,8 +139,15 @@
 .title {
   font-size: 18px;
   font-weight: 600;
-  margin: 0 0 24px 0;
+  margin: 0 0 4px 0;
   color: #333;
+}
+
+.version {
+  display: block;
+  font-size: 11px;
+  color: #999;
+  margin-bottom: 20px;
 }
 
 .section {
