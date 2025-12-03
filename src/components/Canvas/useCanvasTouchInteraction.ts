@@ -8,6 +8,7 @@ import {
   getFullColumnLines,
 } from '../../utils/canvas/advancedDrawing';
 import { floodFill } from '../../utils/canvas/floodFill';
+import { isEraser } from '../../constants/colors';
 import {
   GestureState,
   createInitialGestureState,
@@ -36,6 +37,7 @@ export function useCanvasTouchInteraction(
     width,
     height,
     lines,
+    currentColor,
     toggleLine,
     removeLine,
     addMultipleLines,
@@ -217,27 +219,46 @@ export function useCanvasTouchInteraction(
               TOUCH_HIT_TOLERANCE
             );
 
+            // Check if eraser tool is selected
+            const eraserSelected = isEraser(currentColor);
+
             // Handle special hits (tails, numbers)
             if (hit.type === 'row-tail') {
-              addMultipleLines(getFullRowLines(hit.y, width));
+              if (eraserSelected) {
+                removeMultipleLines(getFullRowLines(hit.y, width));
+              } else {
+                addMultipleLines(getFullRowLines(hit.y, width));
+              }
               return;
             }
             if (hit.type === 'col-tail') {
-              addMultipleLines(getFullColumnLines(hit.x, height));
+              if (eraserSelected) {
+                removeMultipleLines(getFullColumnLines(hit.x, height));
+              } else {
+                addMultipleLines(getFullColumnLines(hit.x, height));
+              }
               return;
             }
             if (hit.type === 'row-number') {
-              setRowHighlight(hit.y);
+              if (eraserSelected) {
+                removeRowHighlight(hit.y);
+              } else {
+                setRowHighlight(hit.y);
+              }
               return;
             }
             if (hit.type === 'col-number') {
-              setColHighlight(hit.x);
+              if (eraserSelected) {
+                removeColHighlight(hit.x);
+              } else {
+                setColHighlight(hit.x);
+              }
               return;
             }
 
-            // Normal line drawing
+            // Normal line drawing - erase if eraser selected
             if (hit.type === 'horizontal-line' || hit.type === 'vertical-line') {
-              handleLineInteraction(hit, false);
+              handleLineInteraction(hit, eraserSelected);
               lastHit.current = hit;
             }
           }
@@ -252,10 +273,14 @@ export function useCanvasTouchInteraction(
       cellSize,
       width,
       height,
+      currentColor,
       handleLineInteraction,
       addMultipleLines,
+      removeMultipleLines,
       setRowHighlight,
       setColHighlight,
+      removeRowHighlight,
+      removeColHighlight,
     ]
   );
 
@@ -315,7 +340,9 @@ export function useCanvasTouchInteraction(
           gestureState.current.mode === 'pending')
       ) {
         const touch = touches[0];
-        const isErasing = gestureState.current.mode === 'erasing';
+        // Erase if long-press erasing mode OR eraser tool is selected
+        const eraserSelected = isEraser(currentColor);
+        const shouldErase = gestureState.current.mode === 'erasing' || eraserSelected;
 
         // Cancel long press if moved significantly during pending
         if (gestureState.current.mode === 'pending' && startTouchPos.current) {
@@ -424,10 +451,10 @@ export function useCanvasTouchInteraction(
             allowedHit.x !== lastHit.current.x ||
             allowedHit.y !== lastHit.current.y)
         ) {
-          handleLineInteraction(allowedHit, isErasing);
+          handleLineInteraction(allowedHit, shouldErase);
           lastHit.current = allowedHit;
         } else if (!lastHit.current && allowedHit.type !== 'none') {
-          handleLineInteraction(allowedHit, isErasing);
+          handleLineInteraction(allowedHit, shouldErase);
           lastHit.current = allowedHit;
         }
 
@@ -443,6 +470,7 @@ export function useCanvasTouchInteraction(
       cellSize,
       width,
       height,
+      currentColor,
       handleLineInteraction,
     ]
   );
