@@ -25,70 +25,72 @@
 
 ## 2. Store
 
-- [ ] 2.1 Create `src/store/useSelectionStore.ts` with state shape
+- [x] 2.1 Create `src/store/useSelectionStore.ts` with state shape
       (`tool`, `selection`, `refineMode`, `ghost`, `clipboard`,
       `axisPicker`) and basic setters (`setTool`, `setRefineMode`,
       `clearAll`). No persistence, no temporal middleware. Run
       `npm run typecheck`.
-- [ ] 2.2 Implement selection-mask actions on `useSelectionStore`:
+- [x] 2.2 Implement selection-mask actions on `useSelectionStore`:
       `setSelection(mask, refineMode)`, `clearSelection`. Replace,
       add, and subtract semantics implemented inside `setSelection`.
       Run `npm run typecheck`.
-- [ ] 2.3 Implement ghost lifecycle on `useSelectionStore`:
+- [x] 2.3 Implement ghost lifecycle on `useSelectionStore`:
       `beginMoveGhost`, `beginPasteGhost`, `beginMirrorGhost(axis)`,
       `adjustGhost(dx, dy)` (with bbox clamping), `cancelGhost`. Run
       `npm run typecheck`.
-- [ ] 2.4 Implement clipboard actions on `useSelectionStore`:
+- [x] 2.4 Implement clipboard actions on `useSelectionStore`:
       `copySelection`, `cutSelection`, `pasteFromClipboard`. Cut goes
       through `useCanvasStore.applyDelete` for the undoable side.
       Run `npm run typecheck`.
-- [ ] 2.5 Implement axis-picker actions: `beginAxisPicker`,
+- [x] 2.5 Implement axis-picker actions: `beginAxisPicker`,
       `confirmAxis(axis)`, `cancelAxisPicker`. Run
       `npm run typecheck`.
-- [ ] 2.6 Add `applyMove`, `applyDelete`, `applyPaste`, `applyMirror`
+- [x] 2.6 Add `applyMove`, `applyDelete`, `applyPaste`, `applyMirror`
       actions to `useCanvasStore`. Each is a single `set(...)` call
       so zundo records one undo step. Reuse existing
       `addMultipleLines` / `removeMultipleLines` shapes for atomic
       mutation. Run `npm run typecheck`.
-- [ ] 2.7 Wire `commitGhost` on `useSelectionStore` to call the
+- [x] 2.7 Wire `commitGhost` on `useSelectionStore` to call the
       appropriate `apply*` action and then clear the ghost. Run
       `npm run typecheck`.
-- [ ] 2.8 Add canvas-resize coupling: in `useCanvasStore.resizeCanvas`
-      and `setCanvasSize`, also call
-      `useSelectionStore.getState().clearAll()`. Run
-      `npm run typecheck`.
-- [ ] 2.9 Re-export `useSelectionStore` from `src/store/index.ts`.
+- [x] 2.8 Add canvas-resize coupling. **Implemented as one-way
+      subscribe inside `useSelectionStore`** (cleaner than the original
+      "modify `useCanvasStore.resizeCanvas`" plan, which would create a
+      circular import). Canvas store stays unaware of selection.
+      Run `npm run typecheck`.
+- [x] 2.9 Re-export `useSelectionStore` from `src/store/index.ts`.
       Run `npm run typecheck`.
 
 ## 3. Utils
 
-- [ ] 3.1 Create `src/utils/canvas/selection/maskUtils.ts`:
+- [x] 3.1 Create `src/utils/canvas/selection/maskUtils.ts`:
       `cellKey`, `parseCellKey`, `addCell`, `removeCell`, `hasCell`,
       `fromRect(x0, y0, x1, y1)`, `union(a, b)`, `subtract(a, b)`,
-      `bbox(mask)`, `translate(mask, dx, dy)`. Tests in
-      `__tests__/utils/maskUtils.test.ts`. Run `npm run test`.
-- [ ] 3.2 Create `src/utils/canvas/selection/lasso.ts`:
+      `bbox(mask)`, `translate(mask, dx, dy)`, `mirrorMask(mask, axis)`.
+      Tests in `__tests__/utils/canvas/selection/maskUtils.test.ts`.
+      Run `npm run test`.
+- [x] 3.2 Create `src/utils/canvas/selection/lasso.ts`:
       `appendPoint(points, newPoint, minDist=5)`,
       `pointInPolygon(point, polygon)` (ray-casting),
       `cellsInPolygon(polygon, width, height)`. Tests covering
       degenerate polygon, single-cell, ribbon shapes. Run
       `npm run test`.
-- [ ] 3.3 Create `src/utils/canvas/selection/derivedLines.ts`:
+- [x] 3.3 Create `src/utils/canvas/selection/derivedLines.ts`:
       `getLinesInMask(mask, allLines)` with inclusive-boundary rule.
       Tests for: lines fully inside, lines on boundary, disjoint mask.
       Run `npm run test`.
-- [ ] 3.4 Create `src/utils/canvas/selection/transforms.ts`:
+- [x] 3.4 Create `src/utils/canvas/selection/transforms.ts`:
       `translateLines(lines, dx, dy)`,
       `mirrorLines(lines, axis: MirrorAxis)`,
-      `normalizeToOrigin(lines)`. Tests covering: translate clamping,
-      mirror across vertical axis (horizontal lines `2a − x − 1`,
-      vertical lines `2a − x`), mirror across horizontal axis
-      (symmetric), orientation preservation. Run `npm run test`.
-- [ ] 3.5 Create `src/utils/canvas/selection/marchingAnts.ts`:
-      `traceBoundary(mask)` returns an array of polylines (segments
-      forming the visible perimeter of the mask). Tests for: square
-      mask, mask with hole, disjoint mask. Run `npm run test`.
-- [ ] 3.6 Re-export new utilities from
+      `normalizeToOrigin(lines)`, `linesBbox(lines)`. Tests covering:
+      translate, mirror across vertical axis (horizontal lines
+      `2a − x − 1`, vertical lines `2a − x`), mirror across horizontal
+      axis (symmetric), orientation preservation. Run `npm run test`.
+- [x] 3.5 Create `src/utils/canvas/selection/marchingAnts.ts`:
+      `traceBoundary(mask)` returns an array of unit-length grid
+      edges between in-cells and out-cells. Tests for: square mask,
+      mask with hole, disjoint mask. Run `npm run test`.
+- [x] 3.6 Re-export new utilities from
       `src/utils/canvas/index.ts`. Run `npm run typecheck`.
 
 ## 4. Renderer / Overlay

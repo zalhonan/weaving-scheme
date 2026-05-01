@@ -3,3 +3,8 @@ export * from './hitTest';
 export * from './renderer';
 export * from './advancedDrawing';
 export * from './floodFill';
+export * from './selection/maskUtils';
+export * from './selection/lasso';
+export * from './selection/derivedLines';
+export * from './selection/transforms';
+export * from './selection/marchingAnts';

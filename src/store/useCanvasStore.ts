@@ -32,6 +32,13 @@ interface CanvasActions {
   removeRowHighlight: (index: number) => void;
   removeColHighlight: (index: number) => void;
   loadScheme: (data: { width: number; height: number; lines: Map<string, Line>; highlights: CellHighlight[]; currentColor: string }) => void;
+  // Selection-driven transforms. Each is one set() call so zundo records
+  // exactly one undo step. Lines are passed pre-computed (with their own
+  // colors preserved) — selection logic lives in useSelectionStore + utils.
+  applyMove: (linesToRemove: Line[], linesToAdd: Line[]) => void;
+  applyDelete: (linesToRemove: Line[]) => void;
+  applyPaste: (linesToAdd: Line[]) => void;
+  applyMirror: (linesToRemove: Line[], linesToAdd: Line[]) => void;
 }
 
 type CanvasStore = CanvasState & CanvasActions;
@@ -349,6 +356,52 @@ export const useCanvasStore = create<CanvasStore>()(
               (h) => !(h.type === 'col' && h.index === index)
             ),
           }));
+        },
+
+        applyMove: (linesToRemove, linesToAdd) => {
+          set((state) => {
+            const newLines = new Map(state.lines);
+            for (const line of linesToRemove) {
+              newLines.delete(getLineKey(line.x, line.y, line.orientation));
+            }
+            for (const line of linesToAdd) {
+              newLines.set(getLineKey(line.x, line.y, line.orientation), line);
+            }
+            return { lines: newLines };
+          });
+        },
+
+        applyDelete: (linesToRemove) => {
+          set((state) => {
+            const newLines = new Map(state.lines);
+            for (const line of linesToRemove) {
+              newLines.delete(getLineKey(line.x, line.y, line.orientation));
+            }
+            return { lines: newLines };
+          });
+        },
+
+        applyPaste: (linesToAdd) => {
+          set((state) => {
+            const newLines = new Map(state.lines);
+            for (const line of linesToAdd) {
+              newLines.set(getLineKey(line.x, line.y, line.orientation), line);
+            }
+            return { lines: newLines };
+          });
+        },
+
+        applyMirror: (linesToRemove, linesToAdd) => {
+          set((state) => {
+            const newLines = new Map(state.lines);
+            for (const line of linesToRemove) {
+              newLines.delete(getLineKey(line.x, line.y, line.orientation));
+            }
+            for (const line of linesToAdd) {
+              newLines.set(getLineKey(line.x, line.y, line.orientation), line);
+            }
+            return { lines: newLines };
+          });
         },
 
         loadScheme: (data) => {

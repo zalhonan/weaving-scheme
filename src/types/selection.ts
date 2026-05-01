@@ -50,6 +50,11 @@ export interface GhostState {
    * Null for `paste` (pasting does not remove anything).
    */
   sourceMask: SelectionMask | null;
+  /**
+   * Cell mask the selection becomes after commit. Updated alongside `lines`
+   * on every adjustment so the selection follows the operation.
+   */
+  destMask: SelectionMask;
 }
 
 /**
