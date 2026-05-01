@@ -25,6 +25,10 @@ export function useCanvasRenderer() {
       cellSize,
       getCellColor: getCellHighlightColor,
     });
+    // `highlights` is intentionally listed: getCellHighlightColor reads the
+    // live store via closure, so we need this dep to retrigger render when
+    // highlights change without a `lines` change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [width, height, lines, highlights, offsetX, offsetY, cellSize, getCellHighlightColor]);
 
   const scheduleRender = useCallback(() => {

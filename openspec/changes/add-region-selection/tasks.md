@@ -1,11 +1,26 @@
 # Tasks — add-region-selection
 
+## 0. Tooling Setup (prerequisite, not part of the `selection` capability spec)
+
+- [x] 0.1 Create `eslint.config.js` (ESLint 9 flat config) using
+      already-installed `@eslint/js`, `typescript-eslint`,
+      `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`,
+      `globals`. Honor `_`-prefix unused-vars convention. Run
+      `npm run lint`.
+- [x] 0.2 Switch `package.json` test script to `vitest run --passWithNoTests`
+      so the regimen does not hang in watch mode; add `test:watch` for
+      interactive use. Run `npm run test`.
+- [x] 0.3 Resolve pre-existing lint findings in untouched code so the
+      regimen has a green baseline (eslint-disable for the intentional
+      `highlights` dep in `useCanvasRenderer.ts`; `_`-prefix already
+      handled by config).
+
 ## 1. Types
 
-- [ ] 1.1 Create `src/types/selection.ts` with `Tool`, `RefineMode`,
+- [x] 1.1 Create `src/types/selection.ts` with `Tool`, `RefineMode`,
       `SelectionMask`, `MirrorAxis`, `GhostKind`, `GhostState`,
       `ClipboardEntry`. Run `npm run typecheck`.
-- [ ] 1.2 Re-export new types from `src/types/index.ts`. Run
+- [x] 1.2 Re-export new types from `src/types/index.ts`. Run
       `npm run typecheck`.
 
 ## 2. Store
