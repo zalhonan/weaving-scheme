@@ -1,0 +1,104 @@
+schema: spec-driven
+
+# Project context shown to AI when creating OpenSpec artifacts.
+# Stack, file naming, and code conventions live in CLAUDE.md
+# (auto-loaded in the same session) — do not mirror them here.
+context: |
+  # Weaving Scheme — OpenSpec context
+
+  Single-page web app for drawing grid-based diagrams where lines are
+  placed on cell BORDERS (not by filling cells). Used for designing
+  weaving / cross-stitch / pixel-style schemes.
+
+  ## Glossary
+  - **Cell** — unit square in the grid, indexed `[0..width-1] × [0..height-1]`.
+  - **Boundary** — edge between two adjacent cells; lines live here, not inside cells.
+  - **Line** — `{ x, y, orientation: 'horizontal' | 'vertical', color }`,
+    stored in `Map<string, Line>` keyed by `${orientation}-${x}-${y}`.
+  - **CellHighlight** — `{ type: 'row' | 'col', index, color, timestamp }`;
+    on intersections the latest `timestamp` wins.
+  - **Persistence** — only `useCanvasStore` is persisted to localStorage;
+    `useViewportStore` and `useUIStore` are session-only.
+
+  ## Source-of-truth references (read at decision time — do not mirror)
+  - `documentation/epics.md` — shipped vs deferred. Always grep here before
+    claiming a feature exists; never hardcode status into a proposal.
+  - `documentation/user-stories.md` — user stories with IDs (cite as `US-3.2`).
+  - `documentation/tz1.md` — original requirements (Russian).
+  - `documentation/tz2.md` — deferred / future feature ideas (Russian).
+  - `documentation/architecture.md` — technical architecture (English).
+  - `CLAUDE.md` — coding conventions, file naming, store/component patterns.
+
+  ## Writing conventions
+  - English for proposals, specs, tasks, design notes.
+  - Slug: short, kebab-case, verb-led, no dates (`add-mirror-region`).
+  - Cite existing behavior by user-story ID, do not paraphrase.
+  - Quality gates every change's `tasks.md` must end on: `npm run typecheck`,
+    `npm run lint`, `npm run test`, `openspec validate <slug> --strict`.
+
+# Per-artifact rules. Each rule should be enforceable at review time.
+rules:
+  proposal:
+    - |
+      File is `openspec/changes/<slug>/proposal.md` with sections in this
+      order: `## Why`, `## What Changes`, `## Impact`, optional `## Non-Goals`.
+      State the user-visible problem in 1–2 sentences in `## Why` before
+      any solution discussion.
+    - |
+      `## What Changes` lists capability deltas as bullets, each naming
+      the affected capability (e.g. `- drawing: add mirror-region tool`).
+    - |
+      `## Impact` enumerates: affected specs, affected code areas,
+      persisted localStorage migration (required / not required +
+      rationale), and desktop + touch behavior — or explicitly marks
+      touch as out of scope with justification.
+    - |
+      Add `design.md` when the change introduces a new store, a new
+      persisted field, a new rendering pass, or cross-capability
+      coordination. Skip for trivial UI tweaks and pure refactors.
+    - |
+      Include `## Non-Goals` whenever scope could plausibly creep —
+      anything touching drawing, export, or persistence.
+  spec:
+    - |
+      Spec deltas live under
+      `openspec/changes/<slug>/specs/<capability>/spec.md` — NOT under
+      `openspec/specs/`, which is the post-archive location.
+    - |
+      Use OpenSpec delta headers exactly: `## ADDED Requirements`,
+      `## MODIFIED Requirements`, `## REMOVED Requirements`,
+      `## RENAMED Requirements`. Do not invent variants.
+    - |
+      Each requirement uses `### Requirement: <Title>` followed by a
+      single `SHALL`-formed sentence. No "should" / "may" — not
+      enforceable at validate time.
+    - |
+      Each requirement has at least one `#### Scenario: <name>` block
+      with `- **WHEN** …` / `- **THEN** …` bullets. Cover keyboard,
+      mouse, and touch as separate scenarios for interactive features.
+    - |
+      Every new state-mutating action on `useCanvasStore` includes a
+      scenario stating whether it participates in the zundo temporal
+      history.
+    - |
+      Every interactive requirement has a touch scenario, or is marked
+      `### Requirement: … — desktop only` with one-line justification.
+  tasks:
+    - |
+      File is `openspec/changes/<slug>/tasks.md` using the format
+      `## <N>. <Group>` then `- [ ] <N>.<M> <task>` checkboxes.
+    - |
+      Group tasks by layer in this order: types → store → utils →
+      components → tests → docs.
+    - |
+      Each task is ~1–3 hours and ends in a runnable check
+      (`npm run typecheck`, `npm run test`, `npm run lint`, or a manual
+      verify step with explicit acceptance criteria).
+    - |
+      If `## Impact` declares a localStorage migration, include a
+      dedicated migration task in the `store` group with a
+      backward-compatibility check (load a pre-migration snapshot and
+      assert the post-migration shape).
+    - |
+      The final task runs `openspec validate <slug> --strict` and
+      requires resolving every error before the change can be archived.
