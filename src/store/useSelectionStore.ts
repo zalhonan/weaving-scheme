@@ -24,6 +24,17 @@ import {
   translateLines,
 } from '../utils/canvas/selection/transforms';
 
+/**
+ * Live preview of an in-progress marquee/lasso drag. Pure UI feedback —
+ * not the committed selection. Cleared on drag-end (which calls setSelection).
+ */
+export interface MarqueePreview {
+  kind: 'rect' | 'lasso';
+  /** For rect: anchor cell + current cell. For lasso: list of polygon points (grid coords). */
+  rect?: { x0: number; y0: number; x1: number; y1: number };
+  lasso?: Array<{ x: number; y: number }>;
+}
+
 interface SelectionState {
   tool: Tool;
   selection: SelectionMask | null;
@@ -31,6 +42,7 @@ interface SelectionState {
   ghost: GhostState | null;
   clipboard: ClipboardEntry | null;
   axisPicker: { active: boolean } | null;
+  marqueePreview: MarqueePreview | null;
 }
 
 interface SelectionActions {
@@ -39,6 +51,7 @@ interface SelectionActions {
   setSelection: (mask: SelectionMask, mode?: RefineMode) => void;
   clearSelection: () => void;
   clearAll: () => void;
+  setMarqueePreview: (preview: MarqueePreview | null) => void;
 
   beginMoveGhost: () => void;
   beginPasteGhost: (originCell?: { x: number; y: number }) => void;
@@ -65,6 +78,7 @@ const initialState: SelectionState = {
   ghost: null,
   clipboard: null,
   axisPicker: null,
+  marqueePreview: null,
 };
 
 /**
@@ -118,10 +132,18 @@ export const useSelectionStore = create<SelectionStore>((set, get) => ({
 
   setTool: (tool) => {
     // Tool switch cancels any in-progress selection or operation.
-    set({ tool, selection: null, ghost: null, axisPicker: null });
+    set({
+      tool,
+      selection: null,
+      ghost: null,
+      axisPicker: null,
+      marqueePreview: null,
+    });
   },
 
   setRefineMode: (refineMode) => set({ refineMode }),
+
+  setMarqueePreview: (marqueePreview) => set({ marqueePreview }),
 
   setSelection: (mask, mode) => {
     const effectiveMode = mode ?? get().refineMode;
@@ -137,9 +159,15 @@ export const useSelectionStore = create<SelectionStore>((set, get) => ({
     set({ selection: next.size === 0 ? null : next, ghost: null });
   },
 
-  clearSelection: () => set({ selection: null }),
+  clearSelection: () => set({ selection: null, marqueePreview: null }),
 
-  clearAll: () => set({ selection: null, ghost: null, axisPicker: null }),
+  clearAll: () =>
+    set({
+      selection: null,
+      ghost: null,
+      axisPicker: null,
+      marqueePreview: null,
+    }),
 
   beginMoveGhost: () => {
     const { selection } = get();

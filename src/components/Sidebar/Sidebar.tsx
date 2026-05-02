@@ -7,6 +7,7 @@ import { UndoRedo } from './UndoRedo';
 import { HotkeysInfo } from './HotkeysInfo';
 import { ColorPalette } from './ColorPalette';
 import { ExportImport } from './ExportImport';
+import { SelectionTool } from './SelectionTool';
 import config from '../../../config.json';
 import styles from './Sidebar.module.css';
 
@@ -87,6 +88,7 @@ export const Sidebar: React.FC = () => {
           <div className={styles.content}>
             <h2 className={styles.title}>Weaving Scheme</h2>
             <span className={styles.version}>{config.version}</span>
+            <SelectionTool />
             <ColorPalette />
             <Statistics />
             <CanvasSizeControl />

@@ -95,17 +95,19 @@
 
 ## 4. Renderer / Overlay
 
-- [ ] 4.1 Add a second `<canvas>` element in `Canvas.tsx`, absolutely
-      positioned over the existing canvas with `pointer-events: none`
-      and `z-index: 2`. Verify visually: open dev server, draw a
-      line, confirm no regression in the static layer.
-- [ ] 4.2 Create `src/components/Canvas/useOverlayRenderer.ts` with a
+- [x] 4.1 Add a second `<canvas>` element in `Canvas.tsx`, absolutely
+      positioned over the existing canvas with `pointer-events: none`.
+      Both canvases wrapped in a `.container` div. (Slice A)
+- [x] 4.2 Create `src/components/Canvas/useOverlayRenderer.ts` with a
       RAF loop that starts when
-      `selection !== null || ghost !== null || axisPicker?.active`
-      and stops otherwise. Run `npm run typecheck`.
-- [ ] 4.3 Implement marching-ants drawing inside the overlay
-      renderer: trace boundary, draw dashed polyline, advance dash
-      offset by 0.5 px/frame. Manual verify on dev server.
+      `selection || ghost || axisPicker || marqueePreview` is non-null
+      and stops otherwise. Subscribes to viewport store for redraws on
+      pan/zoom even when RAF is idle. (Slice A)
+- [x] 4.3 Implement marching-ants drawing inside
+      `src/utils/canvas/overlayRenderer.ts`: trace boundary, draw
+      dashed polyline (white underlay + black overlay with half-cycle
+      offset for legibility), advance dash offset by 0.5 px/frame.
+      Also draws live marquee preview rect. (Slice A)
 - [ ] 4.4 Implement ghost-line drawing on the overlay canvas at ~50 %
       opacity, 2 px stroke. Manual verify.
 - [ ] 4.5 Implement axis-picker overlay: highlight the nearest grid
@@ -113,9 +115,11 @@
 
 ## 5. Components — Sidebar
 
-- [ ] 5.1 Add a tool switcher in `src/components/Sidebar/`: buttons
-      for Draw / Rectangle Select / Lasso Select wired to
-      `useSelectionStore.setTool`. Run `npm run typecheck`.
+- [x] 5.1 Add a tool switcher in `src/components/Sidebar/SelectionTool.tsx`:
+      buttons for Draw / Rectangle / Lasso wired to
+      `useSelectionStore.setTool`. Lasso button is functional only after
+      slice C — clicking it switches the mode but selection-lasso input
+      is not yet wired. (Slice A)
 - [ ] 5.2 Add a selection-operations section that becomes visible
       when `selection !== null`: buttons for Move, Delete, Copy,
       Cut, Paste, Flip H, Flip V, Mirror. Run `npm run typecheck`.
@@ -148,17 +152,17 @@
 
 ## 7. Components — Canvas interaction
 
-- [ ] 7.1 In `useCanvasInteraction.ts`, branch at the top of
-      `handleMouseDown` / `handleMouseMove` / `handleMouseUp` on
-      `useSelectionStore.tool`. When `'draw'`: existing path
-      unchanged. When `'select-rect'` or `'select-lasso'`: new
-      paths. Run `npm run typecheck`.
-- [ ] 7.2 Implement rectangle-marquee mouse path: track start cell,
-      current cell, on mouse-up call
-      `setSelection(maskUtils.fromRect(...), refineMode)`. Honor
-      `Shift` (`add`) and `Ctrl`/`Cmd` (`subtract`) overrides over
-      the toolbar refinement mode. Manual verify: draw rect, see
-      marching ants.
+- [x] 7.1 In `useCanvasInteraction.ts`, branch at the top of
+      `handleMouseDown` on `useSelectionStore.tool`. When `'draw'`:
+      existing path unchanged. When `'select-rect'`: marquee path.
+      When `'select-lasso'`: no-op until slice C. (Slice A)
+- [x] 7.2 Implement rectangle-marquee mouse path: track anchor cell
+      via `marqueeAnchor` ref; mouse-move updates
+      `setMarqueePreview` (live dashed rect on overlay); mouse-up
+      calls `setSelection(fromRect(...))` and clears preview.
+      Mouse-leave commits via the same path (using last preview).
+      `Shift` / `Ctrl` modifier branches arrive in slice C alongside
+      lasso. (Slice A)
 - [ ] 7.3 Implement lasso mouse path: collect points via
       `lasso.appendPoint`, on mouse-up build mask via
       `lasso.cellsInPolygon` and call `setSelection`. Manual verify.

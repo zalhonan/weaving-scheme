@@ -1,5 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
-import { useCanvasStore, useViewportStore, useUIStore } from '../../store';
+import {
+  useCanvasStore,
+  useViewportStore,
+  useUIStore,
+  useSelectionStore,
+} from '../../store';
 import { hitTest, HitTestResult } from '../../utils/canvas/hitTest';
 import { screenToGrid } from '../../utils/canvas/coordinates';
 import {
@@ -8,6 +13,7 @@ import {
   getFullColumnLines,
 } from '../../utils/canvas/advancedDrawing';
 import { floodFill } from '../../utils/canvas/floodFill';
+import { fromRect } from '../../utils/canvas/selection/maskUtils';
 import { isEraser } from '../../constants/colors';
 
 type MouseButton = 'left' | 'right' | 'middle' | null;
@@ -47,6 +53,8 @@ export function useCanvasInteraction(
   const dragStartScreenPos = useRef<{ x: number; y: number } | null>(null);
   const accumulatedDelta = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
   const lastScreenPos = useRef<{ x: number; y: number } | null>(null);
+  // Selection-tool drag state. Anchor cell of a rectangle marquee.
+  const marqueeAnchor = useRef<{ x: number; y: number } | null>(null);
 
   const getCanvasCoords = useCallback(
     (e: React.MouseEvent | MouseEvent): { x: number; y: number } => {
@@ -86,7 +94,7 @@ export function useCanvasInteraction(
 
       const { x, y } = getCanvasCoords(e);
 
-      // Middle button - start panning
+      // Middle button - start panning (works in any tool)
       if (e.button === 1) {
         setIsPanning(true);
         lastPanPos.current = { x, y };
@@ -94,7 +102,30 @@ export function useCanvasInteraction(
         return;
       }
 
-      // Left or right button - drawing/erasing
+      // Tool-mode dispatch: selection tools take priority over draw paths.
+      const tool = useSelectionStore.getState().tool;
+
+      if (tool === 'select-rect') {
+        if (e.button !== 0) return; // only left button starts a marquee
+        const { gridX, gridY } = screenToGrid(x, y, offsetX, offsetY, cellSize);
+        const cellX = Math.floor(gridX);
+        const cellY = Math.floor(gridY);
+        if (cellX < 0 || cellX >= width || cellY < 0 || cellY >= height) return;
+        activeButton.current = 'left';
+        marqueeAnchor.current = { x: cellX, y: cellY };
+        useSelectionStore.getState().setMarqueePreview({
+          kind: 'rect',
+          rect: { x0: cellX, y0: cellY, x1: cellX, y1: cellY },
+        });
+        return;
+      }
+
+      if (tool === 'select-lasso') {
+        // Lasso wiring lands in slice C; for now selection-lasso tool is a no-op.
+        return;
+      }
+
+      // tool === 'draw' — existing draw/erase pipeline.
       const isLeftButton = e.button === 0;
       const isRightButton = e.button === 2;
 
@@ -241,6 +272,23 @@ export function useCanvasInteraction(
         return;
       }
 
+      // Marquee drag in progress — update preview rect.
+      if (marqueeAnchor.current && activeButton.current === 'left') {
+        const { gridX, gridY } = screenToGrid(x, y, offsetX, offsetY, cellSize);
+        const cellX = Math.max(0, Math.min(width - 1, Math.floor(gridX)));
+        const cellY = Math.max(0, Math.min(height - 1, Math.floor(gridY)));
+        useSelectionStore.getState().setMarqueePreview({
+          kind: 'rect',
+          rect: {
+            x0: marqueeAnchor.current.x,
+            y0: marqueeAnchor.current.y,
+            x1: cellX,
+            y1: cellY,
+          },
+        });
+        return;
+      }
+
       // Drawing/erasing while dragging
       if (activeButton.current === 'left' || activeButton.current === 'right') {
         const { gridX, gridY } = screenToGrid(x, y, offsetX, offsetY, cellSize);
@@ -340,18 +388,21 @@ export function useCanvasInteraction(
     ]
   );
 
-  const handleMouseUp = useCallback(() => {
-    setIsPanning(false);
-    lastPanPos.current = null;
-    activeButton.current = null;
-    lastHit.current = null;
-    movementDirection.current = null;
-    dragStartScreenPos.current = null;
-    accumulatedDelta.current = { dx: 0, dy: 0 };
-    lastScreenPos.current = null;
+  const commitMarquee = useCallback(() => {
+    const sel = useSelectionStore.getState();
+    const preview = sel.marqueePreview;
+    if (preview && preview.kind === 'rect' && preview.rect) {
+      const { x0, y0, x1, y1 } = preview.rect;
+      sel.setSelection(fromRect(x0, y0, x1, y1));
+    }
+    sel.setMarqueePreview(null);
+    marqueeAnchor.current = null;
   }, []);
 
-  const handleMouseLeave = useCallback(() => {
+  const handleMouseUp = useCallback(() => {
+    if (marqueeAnchor.current) {
+      commitMarquee();
+    }
     setIsPanning(false);
     lastPanPos.current = null;
     activeButton.current = null;
@@ -360,7 +411,22 @@ export function useCanvasInteraction(
     dragStartScreenPos.current = null;
     accumulatedDelta.current = { dx: 0, dy: 0 };
     lastScreenPos.current = null;
-  }, []);
+  }, [commitMarquee]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (marqueeAnchor.current) {
+      // Treat leaving the canvas mid-drag as commit (using last known cell).
+      commitMarquee();
+    }
+    setIsPanning(false);
+    lastPanPos.current = null;
+    activeButton.current = null;
+    lastHit.current = null;
+    movementDirection.current = null;
+    dragStartScreenPos.current = null;
+    accumulatedDelta.current = { dx: 0, dy: 0 };
+    lastScreenPos.current = null;
+  }, [commitMarquee]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();

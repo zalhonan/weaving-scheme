@@ -2,10 +2,15 @@ import { useEffect } from 'react';
 import { useCanvasRenderer } from './useCanvasRenderer';
 import { useCanvasInteraction } from './useCanvasInteraction';
 import { useCanvasTouchInteraction } from './useCanvasTouchInteraction';
+import { useOverlayRenderer } from './useOverlayRenderer';
+import { useCanvasShortcuts } from './useCanvasShortcuts';
 import styles from './Canvas.module.css';
 
 export const Canvas: React.FC = () => {
   const { canvasRef } = useCanvasRenderer();
+  const { canvasRef: overlayRef } = useOverlayRenderer();
+  useCanvasShortcuts();
+
   const {
     isPanning,
     handleMouseDown,
@@ -81,16 +86,23 @@ export const Canvas: React.FC = () => {
     .join(' ');
 
   return (
-    <canvas
-      ref={canvasRef}
-      className={classNames}
-      // Mouse events (desktop)
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
-      onContextMenu={handleContextMenu}
-      // Note: wheel and touch events are attached via useEffect with passive: false
-    />
+    <div className={styles.container}>
+      <canvas
+        ref={canvasRef}
+        className={classNames}
+        // Mouse events (desktop)
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onContextMenu={handleContextMenu}
+        // Note: wheel and touch events are attached via useEffect with passive: false
+      />
+      <canvas
+        ref={overlayRef}
+        className={styles.overlay}
+        aria-hidden
+      />
+    </div>
   );
 };
