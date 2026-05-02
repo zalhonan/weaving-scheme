@@ -22,10 +22,15 @@ export function useOverlayRenderer() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const { selection, marqueePreview } = useSelectionStore.getState();
+    const { selection, marqueePreview, ghost } = useSelectionStore.getState();
     const { offsetX, offsetY, cellSize } = useViewportStore.getState();
 
-    const segments = selection !== null ? traceBoundary(selection) : [];
+    // Ants follow the floating layer when a ghost is active; otherwise they
+    // wrap the committed selection. The original selection mask is never
+    // outlined while a ghost exists — the rectangle moves with the cut piece.
+    const antsMask =
+      ghost !== null ? ghost.destMask : selection;
+    const segments = antsMask !== null ? traceBoundary(antsMask) : [];
 
     renderOverlay(ctx, {
       offsetX,
@@ -33,6 +38,7 @@ export function useOverlayRenderer() {
       cellSize,
       selectionSegments: segments,
       marqueePreview,
+      ghostLines: ghost ? ghost.lines : [],
       dashOffset: dashOffsetRef.current,
     });
   }, []);

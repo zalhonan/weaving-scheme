@@ -5,3 +5,4 @@ export { CanvasSizeControl } from './CanvasSizeControl';
 export { UndoRedo } from './UndoRedo';
 export { HotkeysInfo } from './HotkeysInfo';
 export { SelectionTool } from './SelectionTool';
+export { SelectionOps } from './SelectionOps';

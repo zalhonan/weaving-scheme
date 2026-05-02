@@ -135,13 +135,45 @@ undo step. After commit the selection mask follows the operation:
 
 This lets the user chain operations naturally.
 
-### Visual treatment
+### Visual treatment — image-editor floating-layer model
 
-- Ghost lines are drawn on the **overlay** canvas at ~50% opacity with a 2 px
-  stroke (vs 1.5 px for committed lines).
-- Original lines remain on the **static** canvas during move and mirror, so
-  the user sees source AND destination simultaneously.
-- For paste there is no original — only the ghost on overlay.
+We use the Photoshop-style model: when a move or mirror starts, the source
+content visually "lifts" off the canvas and becomes a **floating layer**
+that the user positions before commit.
+
+- Floating-layer lines render on the **overlay** canvas at **full opacity**
+  with the same 2 px stroke as committed lines — visually indistinguishable
+  from "real" lines, just on a separate canvas so they can be repositioned
+  cheaply.
+- For move and mirror, the source lines are **hidden** on the static canvas
+  for the duration of the operation. The source area appears as empty canvas.
+- The marching-ants outline always wraps the **floating layer's destination
+  mask** (`ghost.destMask`), never the original selection — the rectangle
+  moves with the cut piece, no outline lingers at the source.
+- For paste, there is no source to hide; the floating layer just appears on
+  the overlay at full opacity with ants around it.
+
+### Render-time source hiding (no canvas-store mutation until commit)
+
+The "source disappears" effect is achieved at **render time only** — the
+canvas store is **not** mutated when a move/mirror starts. Concretely:
+
+- `useCanvasRenderer` subscribes to `useSelectionStore.ghost`.
+- When a ghost exists with a `sourceMask`, the renderer computes the set of
+  line-keys inside the source mask (via `getLinesInMask` + `getLineKey`) and
+  skips those lines during the user-line drawing pass.
+- `renderCanvas` accepts an optional `hiddenLineKeys: Set<string>` parameter
+  and skips matching keys in its line-drawing loop.
+
+Consequences:
+
+- **No zundo step on move-start.** The store hasn't changed, so the temporal
+  history is untouched.
+- **Cancel is free.** Discarding the ghost makes the renderer stop hiding
+  the source — lines reappear with zero canvas-store work.
+- **Commit is one atomic step.** `applyMove(sourceLines, ghostLines)` (or
+  `applyMirror`) records exactly one undo entry, just like before.
+- **Undo of a committed move** restores the pre-move state in one Ctrl+Z.
 
 ### Out-of-bounds clamping
 
@@ -297,20 +329,35 @@ guarded branch.)
 
 ## Undo / redo coupling
 
-`useCanvasStore` uses `zundo`'s `temporal` middleware. The
-`Sidebar/UndoRedo.tsx` component invokes
-`useCanvasStore.temporal.getState().undo()` and `redo()`. We extend those
-call sites — the cleanest hook point — to also invoke
-`useSelectionStore.getState().clearAll()`, which clears `selection`, `ghost`,
-and `axisPicker`.
+`useCanvasStore` uses `zundo`'s `temporal` middleware. Every committed
+selection-driven transform (`applyMove` / `applyDelete` / `applyPaste` /
+`applyMirror`) is one `set(...)` call, so each commit produces exactly one
+entry in the same temporal history stream as ordinary draw/erase actions.
+This means a single `Ctrl+Z` cleanly reverses a move, paste, mirror, etc.
+
+There are **two** entry points to undo/redo, both of which must couple to
+selection state:
+
+1. **Sidebar `UndoRedo.tsx` buttons** — call
+   `useCanvasStore.temporal.getState().undo()` / `redo()`.
+2. **`useCanvasShortcuts.ts` keyboard handlers** — `Ctrl+Z` / `Cmd+Z`,
+   `Ctrl+Shift+Z` / `Cmd+Shift+Z`, and `Ctrl+Y` / `Cmd+Y`. Skipped when the
+   keyboard event target is an input/textarea/contenteditable.
+
+After invoking temporal undo/redo, both paths call
+`useSelectionStore.getState().clearAll()`, which clears `selection`,
+`ghost`, and `axisPicker`. This prevents an orphaned selection mask from
+hanging on a now-transformed canvas (e.g. selection at (3,3) but the
+selected lines no longer exist after undo).
 
 We considered subscribing to `temporal.subscribe(...)` instead but rejected
 it: it fires on every mutation of pastStates / futureStates including
 incidental state changes, and detecting "this was an undo/redo" by length
-comparison is brittle. Wrapping the call sites is two lines and explicit.
+comparison is brittle. Wrapping the two explicit call sites is simpler.
 
-Keyboard shortcuts (`Ctrl+Z`, `Ctrl+Shift+Z`/`Ctrl+Y`) go through the same
-component handlers, so they get the same coupling for free.
+**Cancelling a ghost does not pollute history.** Because move/mirror keep
+the canvas store unchanged until commit (render-time source hiding), an
+`Esc`-cancel produces zero zundo entries. Only commits add history.
 
 ## New canvas-store actions
 

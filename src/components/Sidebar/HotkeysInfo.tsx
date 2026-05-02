@@ -10,6 +10,13 @@ const desktopHotkeys = [
   { keys: 'Ctrl + ЛКМ', description: 'Заливка контура' },
   { keys: 'ЛКМ на номер', description: 'Закрасить строку/столбец' },
   { keys: 'ПКМ на номер', description: 'Снять закраску' },
+  { keys: 'Ctrl/⌘ + Z', description: 'Отменить действие' },
+  { keys: 'Ctrl/⌘ + Shift + Z', description: 'Повторить действие' },
+  { keys: 'Ctrl/⌘ + Y', description: 'Повторить действие (Win)' },
+  { keys: 'Del / Backspace', description: 'Удалить выделенное' },
+  { keys: '↑ ↓ ← →', description: 'Сдвинуть выделение / ghost на 1 клетку' },
+  { keys: 'Enter', description: 'Применить перемещение / вставку' },
+  { keys: 'Esc', description: 'Отменить перемещение / снять выделение' },
 ];
 
 const mobileGestures = [

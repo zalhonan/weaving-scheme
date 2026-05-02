@@ -13,7 +13,7 @@ import {
   getFullColumnLines,
 } from '../../utils/canvas/advancedDrawing';
 import { floodFill } from '../../utils/canvas/floodFill';
-import { fromRect } from '../../utils/canvas/selection/maskUtils';
+import { bbox, fromRect } from '../../utils/canvas/selection/maskUtils';
 import { isEraser } from '../../constants/colors';
 
 type MouseButton = 'left' | 'right' | 'middle' | null;
@@ -55,6 +55,8 @@ export function useCanvasInteraction(
   const lastScreenPos = useRef<{ x: number; y: number } | null>(null);
   // Selection-tool drag state. Anchor cell of a rectangle marquee.
   const marqueeAnchor = useRef<{ x: number; y: number } | null>(null);
+  // Ghost-drag state: last cell seen, for incremental adjustGhost deltas.
+  const ghostDragLastCell = useRef<{ x: number; y: number } | null>(null);
 
   const getCanvasCoords = useCallback(
     (e: React.MouseEvent | MouseEvent): { x: number; y: number } => {
@@ -103,25 +105,67 @@ export function useCanvasInteraction(
       }
 
       // Tool-mode dispatch: selection tools take priority over draw paths.
-      const tool = useSelectionStore.getState().tool;
+      const sel = useSelectionStore.getState();
+      const tool = sel.tool;
 
-      if (tool === 'select-rect') {
-        if (e.button !== 0) return; // only left button starts a marquee
+      if (tool === 'select-rect' || tool === 'select-lasso') {
+        if (e.button !== 0) return; // only left button starts marquee/ghost-drag
         const { gridX, gridY } = screenToGrid(x, y, offsetX, offsetY, cellSize);
         const cellX = Math.floor(gridX);
         const cellY = Math.floor(gridY);
-        if (cellX < 0 || cellX >= width || cellY < 0 || cellY >= height) return;
+        const inBounds =
+          cellX >= 0 && cellX < width && cellY >= 0 && cellY < height;
+
+        // Ghost active: clicks inside ghost bbox = drag-ghost; clicks outside = commit.
+        if (sel.ghost) {
+          const ghostBbox = bbox(sel.ghost.destMask);
+          const insideGhost =
+            ghostBbox !== null &&
+            cellX >= ghostBbox.minX &&
+            cellX <= ghostBbox.maxX &&
+            cellY >= ghostBbox.minY &&
+            cellY <= ghostBbox.maxY;
+          if (insideGhost) {
+            activeButton.current = 'left';
+            ghostDragLastCell.current = { x: cellX, y: cellY };
+          } else {
+            sel.commitGhost();
+          }
+          return;
+        }
+
+        // Selection active and click is inside its bbox → start move-ghost drag.
+        if (sel.selection && inBounds) {
+          const selBbox = bbox(sel.selection);
+          const insideSelection =
+            selBbox !== null &&
+            cellX >= selBbox.minX &&
+            cellX <= selBbox.maxX &&
+            cellY >= selBbox.minY &&
+            cellY <= selBbox.maxY;
+          if (insideSelection) {
+            sel.beginMoveGhost();
+            // beginMoveGhost is a no-op if there are no lines in the
+            // selection; in that case fall through to a fresh marquee.
+            if (useSelectionStore.getState().ghost) {
+              activeButton.current = 'left';
+              ghostDragLastCell.current = { x: cellX, y: cellY };
+              return;
+            }
+          }
+        }
+
+        // Lasso input not wired until slice C — short-circuit to keep tool toggle alive.
+        if (tool === 'select-lasso') return;
+
+        // Otherwise: start a fresh rectangle marquee.
+        if (!inBounds) return;
         activeButton.current = 'left';
         marqueeAnchor.current = { x: cellX, y: cellY };
-        useSelectionStore.getState().setMarqueePreview({
+        sel.setMarqueePreview({
           kind: 'rect',
           rect: { x0: cellX, y0: cellY, x1: cellX, y1: cellY },
         });
-        return;
-      }
-
-      if (tool === 'select-lasso') {
-        // Lasso wiring lands in slice C; for now selection-lasso tool is a no-op.
         return;
       }
 
@@ -272,6 +316,20 @@ export function useCanvasInteraction(
         return;
       }
 
+      // Ghost-drag in progress — emit incremental adjustGhost deltas.
+      if (ghostDragLastCell.current && activeButton.current === 'left') {
+        const { gridX, gridY } = screenToGrid(x, y, offsetX, offsetY, cellSize);
+        const cellX = Math.floor(gridX);
+        const cellY = Math.floor(gridY);
+        const dx = cellX - ghostDragLastCell.current.x;
+        const dy = cellY - ghostDragLastCell.current.y;
+        if (dx !== 0 || dy !== 0) {
+          useSelectionStore.getState().adjustGhost(dx, dy);
+          ghostDragLastCell.current = { x: cellX, y: cellY };
+        }
+        return;
+      }
+
       // Marquee drag in progress — update preview rect.
       if (marqueeAnchor.current && activeButton.current === 'left') {
         const { gridX, gridY } = screenToGrid(x, y, offsetX, offsetY, cellSize);
@@ -403,6 +461,10 @@ export function useCanvasInteraction(
     if (marqueeAnchor.current) {
       commitMarquee();
     }
+    // Releasing the mouse during ghost-drag does NOT auto-commit per spec;
+    // we just stop tracking incremental deltas. User confirms via Enter or
+    // by clicking outside the ghost bbox.
+    ghostDragLastCell.current = null;
     setIsPanning(false);
     lastPanPos.current = null;
     activeButton.current = null;
@@ -418,6 +480,7 @@ export function useCanvasInteraction(
       // Treat leaving the canvas mid-drag as commit (using last known cell).
       commitMarquee();
     }
+    ghostDragLastCell.current = null;
     setIsPanning(false);
     lastPanPos.current = null;
     activeButton.current = null;

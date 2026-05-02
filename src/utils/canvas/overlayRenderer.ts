@@ -1,4 +1,5 @@
 import { CANVAS_CONSTANTS } from '../../constants';
+import type { Line } from '../../types';
 import type { Segment } from './selection/marchingAnts';
 import type { MarqueePreview } from '../../store/useSelectionStore';
 
@@ -10,6 +11,8 @@ export interface OverlayRenderOptions {
   selectionSegments: Segment[];
   /** Live drag preview, if any. */
   marqueePreview: MarqueePreview | null;
+  /** Ghost lines (already transformed); rendered at reduced opacity. */
+  ghostLines: Line[];
   /** Marching-ants animation phase, advanced ~0.5 px / frame. */
   dashOffset: number;
 }
@@ -121,15 +124,53 @@ const drawMarquee = (
   ctx.setLineDash([]);
 };
 
+const drawGhost = (
+  ctx: CanvasRenderingContext2D,
+  lines: Line[],
+  offsetX: number,
+  offsetY: number,
+  cellSize: number,
+): void => {
+  if (lines.length === 0) return;
+  // Floating layer renders at full opacity, matching committed-line stroke
+  // width — visually indistinguishable from real lines (Photoshop model).
+  ctx.lineWidth = CANVAS_CONSTANTS.USER_LINE_WIDTH;
+  ctx.lineCap = 'round';
+  for (const line of lines) {
+    let a: { x: number; y: number };
+    let b: { x: number; y: number };
+    if (line.orientation === 'horizontal') {
+      a = gridToScreen(line.x, line.y, offsetX, offsetY, cellSize);
+      b = gridToScreen(line.x + 1, line.y, offsetX, offsetY, cellSize);
+    } else {
+      a = gridToScreen(line.x, line.y, offsetX, offsetY, cellSize);
+      b = gridToScreen(line.x, line.y + 1, offsetX, offsetY, cellSize);
+    }
+    ctx.strokeStyle = line.color;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+};
+
 /**
- * Render the overlay layer (selection ants + live marquee). Idempotent —
- * clears before drawing.
+ * Render the overlay layer (selection ants + live marquee + ghost).
+ * Idempotent — clears before drawing.
  */
 export function renderOverlay(
   ctx: CanvasRenderingContext2D,
   options: OverlayRenderOptions,
 ): void {
-  const { offsetX, offsetY, cellSize, selectionSegments, marqueePreview, dashOffset } = options;
+  const {
+    offsetX,
+    offsetY,
+    cellSize,
+    selectionSegments,
+    marqueePreview,
+    ghostLines,
+    dashOffset,
+  } = options;
 
   const dpr = window.devicePixelRatio || 1;
   const canvas = ctx.canvas;
@@ -144,6 +185,7 @@ export function renderOverlay(
 
   ctx.clearRect(0, 0, displayWidth, displayHeight);
 
+  drawGhost(ctx, ghostLines, offsetX, offsetY, cellSize);
   drawAnts(ctx, selectionSegments, offsetX, offsetY, cellSize, dashOffset);
   if (marqueePreview) {
     drawMarquee(ctx, marqueePreview, offsetX, offsetY, cellSize, dashOffset);

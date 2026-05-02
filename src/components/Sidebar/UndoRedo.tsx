@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { useTemporalStore } from '../../store';
+import { useSelectionStore, useTemporalStore } from '../../store';
 import styles from './Sidebar.module.css';
 
 export const UndoRedo: React.FC = () => {
@@ -18,10 +18,12 @@ export const UndoRedo: React.FC = () => {
 
   const handleUndo = () => {
     temporalStore.getState().undo();
+    useSelectionStore.getState().clearAll();
   };
 
   const handleRedo = () => {
     temporalStore.getState().redo();
+    useSelectionStore.getState().clearAll();
   };
 
   return (

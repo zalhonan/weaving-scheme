@@ -159,9 +159,12 @@ arrow-key cell-by-cell nudge, with a floating ghost preview before commit.
 
 - **WHEN** the user drags inside the selection bbox while a selection is
   active and no other operation is in progress
-- **THEN** a ghost copy of the selected lines appears and follows the cursor
-  offset
-- **AND** the original lines remain visible on the static canvas until commit
+- **THEN** a floating layer containing the selected lines appears and follows
+  the cursor offset
+- **AND** the source lines are hidden from the static canvas (the source
+  area renders as empty canvas) for the duration of the operation
+- **AND** the marching-ants outline tracks the floating layer (no outline
+  remains at the source)
 
 #### Scenario: Move via arrow keys
 
@@ -328,20 +331,26 @@ quick presets that mirror around the selection bbox center.
 - **AND** only the position component (x for vertical-axis mirror, y for
   horizontal-axis mirror) is reflected
 
-### Requirement: Floating Ghost Mechanic
+### Requirement: Floating Layer Mechanic
 
-The system SHALL render a floating ghost preview during move, paste, and
-mirror operations, supporting position adjustment before commit and atomic
-commit/cancel semantics.
+The system SHALL render a floating layer during move, paste, and mirror
+operations, supporting position adjustment before commit and atomic
+commit/cancel semantics. The model is image-editor-style: source content
+is hidden during the operation and the floating layer is rendered at full
+opacity at its current position, so the user sees the moved content as if
+it were "lifted" off the canvas.
 
-#### Scenario: Ghost rendering
+#### Scenario: Floating layer rendering
 
 - **WHEN** any transform operation is in progress (`ghost !== null`)
-- **THEN** the ghost lines are rendered on the overlay canvas at reduced
-  opacity (~50%) with a 2 px stroke
-- **AND** the original (source) lines remain on the static canvas for move
-  and mirror
-- **AND** no original is rendered for paste
+- **THEN** the floating layer lines are rendered on the overlay canvas at
+  full opacity, matching the visual weight of committed lines
+- **AND** for move and mirror, the source lines are hidden from the static
+  canvas — rendered as empty canvas at the source — for the duration of
+  the operation
+- **AND** no source is rendered for paste (paste has no source)
+- **AND** the marching-ants outline tracks the floating layer's destination
+  mask, never the original selection mask
 
 #### Scenario: Ghost adjustment
 
@@ -362,8 +371,11 @@ commit/cancel semantics.
 #### Scenario: Ghost cancel triggers
 
 - **WHEN** the user presses `Escape` or taps the Cancel button
-- **THEN** the ghost is cleared without modifying the canvas
-- **AND** the pre-operation selection is restored
+- **THEN** the floating layer is discarded without any canvas mutation
+- **AND** for move and mirror, the source lines reappear on the static
+  canvas (the canvas store was never modified — the source was only
+  visually hidden during the operation)
+- **AND** the pre-operation selection is restored at the source
 
 #### Scenario: Tool switch cancels ghost
 
@@ -390,31 +402,58 @@ instances.
 - **WHEN** the user deletes the selection
 - **THEN** the column highlight remains visible
 
-### Requirement: Undo / Redo Clears Selection
+### Requirement: Undo Redo Coverage and Keyboard
 
-The system SHALL clear `selection`, `ghost`, and `axisPicker` whenever
-`useCanvasStore.temporal` advances by undo or redo, to prevent orphaned
-selection state on a transformed canvas.
+The system SHALL record every canvas-mutating selection operation (move,
+delete, cut, paste, mirror) as one entry in the shared
+`useCanvasStore.temporal` history, alongside ordinary draw/erase entries,
+and SHALL expose undo/redo via both the sidebar buttons AND the standard
+keyboard shortcuts `Ctrl+Z` / `Cmd+Z` (undo) and `Ctrl+Shift+Z` /
+`Cmd+Shift+Z` / `Ctrl+Y` / `Cmd+Y` (redo). Both entry points SHALL clear
+`selection`, `ghost`, and `axisPicker` after advancing the temporal cursor,
+preventing orphaned UI state on a transformed canvas.
 
-#### Scenario: Undo clears selection
+#### Scenario: Operations are recorded in the shared history
 
-- **WHEN** the user undoes any canvas-mutating action while a selection is
-  active
-- **THEN** the selection becomes `null`
-- **AND** any active ghost is cleared
-- **AND** axis-picker mode exits
+- **WHEN** the user commits a move, delete, cut, paste, or mirror
+- **THEN** exactly one entry is added to `useCanvasStore.temporal`'s
+  past states
+- **AND** that entry sits alongside ordinary draw/erase entries in the
+  same history stream
 
-#### Scenario: Redo clears selection
+#### Scenario: Undo via keyboard
 
-- **WHEN** the user redoes a canvas-mutating action while a selection is
-  active
-- **THEN** the same clearing occurs
+- **WHEN** the user presses `Ctrl+Z` (`Cmd+Z` on macOS) and the focus is
+  not inside an input/textarea/contenteditable
+- **THEN** `useCanvasStore.temporal.undo()` is invoked
+- **AND** any active `selection`, `ghost`, or `axisPicker` is cleared
+
+#### Scenario: Redo via keyboard
+
+- **WHEN** the user presses `Ctrl+Shift+Z`, `Cmd+Shift+Z`, `Ctrl+Y`, or
+  `Cmd+Y` outside an input
+- **THEN** `useCanvasStore.temporal.redo()` is invoked
+- **AND** any active `selection`, `ghost`, or `axisPicker` is cleared
+
+#### Scenario: Undo via sidebar button
+
+- **WHEN** the user clicks the sidebar Undo button
+- **THEN** the same behavior occurs as the keyboard path (temporal undo
+  + selection clear)
 
 #### Scenario: Selection state itself is not undoable
 
-- **WHEN** the user creates, refines, or clears a selection
+- **WHEN** the user creates, refines, or clears a selection (without
+  committing a transform)
 - **THEN** these changes do NOT add an entry to the temporal history
 - **AND** undo skips them entirely
+
+#### Scenario: Cancelling a ghost does not pollute history
+
+- **WHEN** the user starts a move/mirror, optionally adjusts the ghost,
+  then presses Escape
+- **THEN** no entry is added to the temporal history (the canvas store
+  was never modified — render-time hiding only)
 
 ### Requirement: Canvas Resize Clears Selection
 

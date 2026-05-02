@@ -9,6 +9,12 @@ export interface RenderOptions {
   offsetY: number;
   cellSize: number;
   getCellColor?: (cellX: number, cellY: number) => string | null;
+  /**
+   * Line keys to skip during the user-line drawing pass. Used to "lift"
+   * source lines off the canvas while a move/mirror floating layer is
+   * active — the canvas store is unchanged; only the render skips them.
+   */
+  hiddenLineKeys?: Set<string> | null;
 }
 
 /**
@@ -26,6 +32,7 @@ export function renderCanvas(
     offsetY,
     cellSize,
     getCellColor,
+    hiddenLineKeys,
   } = options;
 
   const dpr = window.devicePixelRatio || 1;
@@ -159,7 +166,8 @@ export function renderCanvas(
   ctx.lineWidth = CANVAS_CONSTANTS.USER_LINE_WIDTH;
   ctx.lineCap = 'round';
 
-  lines.forEach((line) => {
+  lines.forEach((line, key) => {
+    if (hiddenLineKeys && hiddenLineKeys.has(key)) return;
     ctx.strokeStyle = line.color;
     ctx.beginPath();
 

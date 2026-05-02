@@ -108,8 +108,8 @@
       dashed polyline (white underlay + black overlay with half-cycle
       offset for legibility), advance dash offset by 0.5 px/frame.
       Also draws live marquee preview rect. (Slice A)
-- [ ] 4.4 Implement ghost-line drawing on the overlay canvas at ~50 %
-      opacity, 2 px stroke. Manual verify.
+- [x] 4.4 Implement ghost-line drawing on the overlay canvas at ~50 %
+      opacity, 2 px stroke, per-line color preserved. (Slice B)
 - [ ] 4.5 Implement axis-picker overlay: highlight the nearest grid
       line under the cursor in axis-picker mode. Manual verify.
 
@@ -120,16 +120,20 @@
       `useSelectionStore.setTool`. Lasso button is functional only after
       slice C — clicking it switches the mode but selection-lasso input
       is not yet wired. (Slice A)
-- [ ] 5.2 Add a selection-operations section that becomes visible
-      when `selection !== null`: buttons for Move, Delete, Copy,
-      Cut, Paste, Flip H, Flip V, Mirror. Run `npm run typecheck`.
+- [x] 5.2 (partial — slice B) Add `SelectionOps` section that becomes
+      visible when `selection || ghost` exists. Slice B: Move, Delete
+      (when selection); Confirm, Cancel (when ghost). Slices C/D/E add
+      Copy, Cut, Paste, Flip-H, Flip-V, Mirror.
 - [ ] 5.3 Update `HotkeysInfo.tsx` with new shortcuts: `V` /
       `B` (tool switch), `Delete`, `Ctrl/Cmd + C/X/V`, `Enter`
       (confirm ghost), `Escape` (cancel ghost), arrow keys (nudge
       ghost). Run `npm run lint`.
-- [ ] 5.4 Update `Sidebar/UndoRedo.tsx` to call
+- [x] 5.4 Update `Sidebar/UndoRedo.tsx` to call
       `useSelectionStore.getState().clearAll()` after any undo or
-      redo. Run `npm run typecheck`.
+      redo. Same coupling added to keyboard `Ctrl/Cmd+Z` /
+      `Ctrl/Cmd+Shift+Z` / `Ctrl/Cmd+Y` shortcuts in
+      `useCanvasShortcuts.ts`. `HotkeysInfo` updated to list these
+      shortcuts.
 
 ## 6. Components — Mobile
 
@@ -166,19 +170,19 @@
 - [ ] 7.3 Implement lasso mouse path: collect points via
       `lasso.appendPoint`, on mouse-up build mask via
       `lasso.cellsInPolygon` and call `setSelection`. Manual verify.
-- [ ] 7.4 Implement ghost interaction in `useCanvasInteraction.ts`:
-      drag inside selection bbox starts move-ghost; drag while
-      ghost active calls `adjustGhost`. Manual verify.
+- [x] 7.4 Implement ghost interaction in `useCanvasInteraction.ts`:
+      drag inside selection bbox starts move-ghost; drag inside ghost
+      bbox calls `adjustGhost` with incremental cell deltas; click
+      outside ghost bbox commits. (Slice B)
 - [ ] 7.5 Implement axis-picker interaction: when
       `axisPicker.active`, mouse-move only updates overlay (no
       drawing); click on a grid line within proximity threshold
       calls `confirmAxis`. Manual verify.
-- [ ] 7.6 Implement keyboard shortcuts in `Canvas.tsx` (or a new
-      `useCanvasShortcuts.ts`): `V` / `B` tool switch, `Delete` /
-      `Backspace`, `Ctrl/Cmd + C/X/V`, `Enter` (commit ghost),
-      `Escape` (cancel ghost / cancel axis-picker), arrow keys
-      (nudge ghost; if no ghost, create move-ghost at offset 0,0
-      and nudge). Run `npm run typecheck`. Manual verify.
+- [x] 7.6 (partial — slices A+B) `useCanvasShortcuts.ts` handles:
+      `Escape`, `Enter`, `Delete`/`Backspace`, arrow keys (with
+      auto-create move-ghost from selection). Tool-switch hotkeys
+      (V/B/L) and `Ctrl/Cmd+C/X/V` clipboard shortcuts arrive in
+      slices C and D respectively.
 - [ ] 7.7 Mirror the changes in `useCanvasTouchInteraction.ts`:
       branch on `tool` for single-finger paths, gate long-press =
       erase behind `tool === 'draw'`, route ghost commit/cancel

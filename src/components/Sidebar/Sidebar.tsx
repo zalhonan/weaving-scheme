@@ -8,6 +8,7 @@ import { HotkeysInfo } from './HotkeysInfo';
 import { ColorPalette } from './ColorPalette';
 import { ExportImport } from './ExportImport';
 import { SelectionTool } from './SelectionTool';
+import { SelectionOps } from './SelectionOps';
 import config from '../../../config.json';
 import styles from './Sidebar.module.css';
 
@@ -89,6 +90,7 @@ export const Sidebar: React.FC = () => {
             <h2 className={styles.title}>Weaving Scheme</h2>
             <span className={styles.version}>{config.version}</span>
             <SelectionTool />
+            <SelectionOps />
             <ColorPalette />
             <Statistics />
             <CanvasSizeControl />
