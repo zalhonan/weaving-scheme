@@ -237,41 +237,31 @@
 
 ## 8. Tests
 
-- [ ] 8.1 Store tests for `useSelectionStore`: tool switch clears
-      selection and ghost, refinement modes union/subtract correctly,
-      `adjustGhost` clamps to canvas bounds. Run `npm run test`.
-- [ ] 8.2 Integration test: full move flow — select → move →
-      confirm → verify lines moved and original removed → undo →
-      verify both selection cleared and lines restored. Run
-      `npm run test`.
-- [ ] 8.3 Integration test: copy / paste flow — select → copy →
-      paste → adjust ghost → confirm → verify lines duplicated.
-      Run `npm run test`.
-- [ ] 8.4 Integration test: mirror flow with custom axis — select →
-      mirror → confirm axis on a column boundary → confirm ghost →
-      verify reflected lines and original removed. Run
-      `npm run test`.
-- [ ] 8.5 Edge-case test: `CellHighlight` rows/columns remain in
-      place after move and after delete operate on a covering
-      selection. Run `npm run test`.
-- [ ] 8.6 Edge-case test: cut clears selection; pasting after cut
-      lands clipboard content; undoing cut restores lines (clipboard
-      retains content — duplicate behavior is intentional). Run
-      `npm run test`.
-- [ ] 8.7 Edge-case test: canvas resize while selection active
-      clears selection. Run `npm run test`.
+- [x] 8.1–8.7 Integration tests for `useSelectionStore` in
+      `__tests__/store/useSelectionStore.test.ts`. 20 tests covering:
+      tool-switch clears selection / ghost; refinement modes
+      replace / add / subtract (incl. subtract-to-empty → null);
+      move flow (begin → adjust → commit = 1 zundo entry; cancel = 0);
+      composable transforms (flip + rotate + adjust = 1 zundo entry;
+      lazy ghost creation from selection); copy / cut / paste (paste
+      origin uses selection bbox; cut clears selection; clipboard
+      preserved across off-canvas commit); CellHighlights unaffected
+      by move; canvas resize clears selection; off-canvas clip on
+      commit drops out-of-bounds lines; rotation 4×CW = identity.
+      Vitest setup file (`__tests__/setup.ts`) stubs `localStorage`
+      so `persist` middleware doesn't warn in node env.
 
 ## 9. Docs
 
-- [ ] 9.1 Update `documentation/user-stories.md` with new user
-      stories for the selection capability (one per requirement,
-      acceptance criteria mirror spec.md scenarios). Manual review.
-- [ ] 9.2 Update `documentation/epics.md` to register the new
-      selection epic (or extend an existing one). Manual review.
+- [x] 9.1 `documentation/user-stories.md` extended with Эпик 7
+      (US-7.1 — US-7.15) covering all selection requirements, plus
+      summary table entries.
+- [x] 9.2 `documentation/epics.md` extended with «Эпик 7:
+      Выделение и трансформации участков» — функционал, архитектура,
+      ценность; the dependency graph updated.
 
 ## 10. Validate
 
-- [ ] 10.1 Run `npm run typecheck && npm run lint && npm run test`
-      and resolve all errors.
-- [ ] 10.2 Run `openspec validate add-region-selection --strict` and
-      resolve every error before this change can be archived.
+- [x] 10.1 `npm run typecheck && npm run lint && npm run test` —
+      all green. 93 tests pass.
+- [x] 10.2 `openspec validate add-region-selection --strict` — valid.
