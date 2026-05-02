@@ -14,6 +14,12 @@ import {
 } from '../../utils/canvas/advancedDrawing';
 import { floodFill } from '../../utils/canvas/floodFill';
 import { bbox, fromRect } from '../../utils/canvas/selection/maskUtils';
+import {
+  appendPoint,
+  cellsInPolygon,
+  type Point,
+} from '../../utils/canvas/selection/lasso';
+import type { RefineMode } from '../../types';
 import { isEraser } from '../../constants/colors';
 
 type MouseButton = 'left' | 'right' | 'middle' | null;
@@ -55,6 +61,11 @@ export function useCanvasInteraction(
   const lastScreenPos = useRef<{ x: number; y: number } | null>(null);
   // Selection-tool drag state. Anchor cell of a rectangle marquee.
   const marqueeAnchor = useRef<{ x: number; y: number } | null>(null);
+  // Lasso polygon points (in fractional grid coords) being collected during drag.
+  const lassoPoints = useRef<Point[] | null>(null);
+  // Modifier captured at drag start: 'add' (Shift) or 'subtract' (Ctrl/Cmd) overrides
+  // the toolbar refineMode for THIS drag only. Null = no override (use store's mode).
+  const dragRefineOverride = useRef<RefineMode | null>(null);
   // Ghost-drag state: last cell seen, for incremental adjustGhost deltas.
   const ghostDragLastCell = useRef<{ x: number; y: number } | null>(null);
 
@@ -134,8 +145,19 @@ export function useCanvasInteraction(
           return;
         }
 
-        // Selection active and click is inside its bbox → start move-ghost drag.
-        if (sel.selection && inBounds) {
+        // Capture refinement-modifier override for THIS drag only.
+        // Shift → add, Ctrl/Cmd → subtract. Read once at mouseDown; mid-drag
+        // modifier changes do not re-evaluate (matches image-editor convention).
+        const override: RefineMode | null = e.shiftKey
+          ? 'add'
+          : e.ctrlKey || e.metaKey
+            ? 'subtract'
+            : null;
+        dragRefineOverride.current = override;
+
+        // No modifier + click inside existing selection → start move-ghost drag.
+        // With a modifier we always start a refinement drag instead of moving.
+        if (override === null && sel.selection && inBounds) {
           const selBbox = bbox(sel.selection);
           const insideSelection =
             selBbox !== null &&
@@ -145,20 +167,25 @@ export function useCanvasInteraction(
             cellY <= selBbox.maxY;
           if (insideSelection) {
             sel.beginMoveGhost();
-            // beginMoveGhost is a no-op if there are no lines in the
-            // selection; in that case fall through to a fresh marquee.
             if (useSelectionStore.getState().ghost) {
               activeButton.current = 'left';
               ghostDragLastCell.current = { x: cellX, y: cellY };
+              dragRefineOverride.current = null;
               return;
             }
           }
         }
 
-        // Lasso input not wired until slice C — short-circuit to keep tool toggle alive.
-        if (tool === 'select-lasso') return;
+        if (tool === 'select-lasso') {
+          if (!inBounds) return;
+          activeButton.current = 'left';
+          const start: Point = { x: gridX, y: gridY };
+          lassoPoints.current = [start];
+          sel.setMarqueePreview({ kind: 'lasso', lasso: [start] });
+          return;
+        }
 
-        // Otherwise: start a fresh rectangle marquee.
+        // select-rect — fresh marquee
         if (!inBounds) return;
         activeButton.current = 'left';
         marqueeAnchor.current = { x: cellX, y: cellY };
@@ -330,6 +357,26 @@ export function useCanvasInteraction(
         return;
       }
 
+      // Lasso drag in progress — append point if min-distance away (5px screen
+      // ≈ 5/cellSize grid units), update preview polyline.
+      if (lassoPoints.current && activeButton.current === 'left') {
+        const { gridX, gridY } = screenToGrid(x, y, offsetX, offsetY, cellSize);
+        const minDistGrid = 5 / cellSize;
+        const next = appendPoint(
+          lassoPoints.current,
+          { x: gridX, y: gridY },
+          minDistGrid,
+        );
+        if (next !== lassoPoints.current) {
+          lassoPoints.current = next;
+          useSelectionStore.getState().setMarqueePreview({
+            kind: 'lasso',
+            lasso: next,
+          });
+        }
+        return;
+      }
+
       // Marquee drag in progress — update preview rect.
       if (marqueeAnchor.current && activeButton.current === 'left') {
         const { gridX, gridY } = screenToGrid(x, y, offsetX, offsetY, cellSize);
@@ -449,16 +496,24 @@ export function useCanvasInteraction(
   const commitMarquee = useCallback(() => {
     const sel = useSelectionStore.getState();
     const preview = sel.marqueePreview;
-    if (preview && preview.kind === 'rect' && preview.rect) {
-      const { x0, y0, x1, y1 } = preview.rect;
-      sel.setSelection(fromRect(x0, y0, x1, y1));
+    const overrideMode = dragRefineOverride.current ?? undefined;
+    if (preview) {
+      if (preview.kind === 'rect' && preview.rect) {
+        const { x0, y0, x1, y1 } = preview.rect;
+        sel.setSelection(fromRect(x0, y0, x1, y1), overrideMode);
+      } else if (preview.kind === 'lasso' && preview.lasso) {
+        const mask = cellsInPolygon(preview.lasso, width, height);
+        sel.setSelection(mask, overrideMode);
+      }
     }
     sel.setMarqueePreview(null);
     marqueeAnchor.current = null;
-  }, []);
+    lassoPoints.current = null;
+    dragRefineOverride.current = null;
+  }, [width, height]);
 
   const handleMouseUp = useCallback(() => {
-    if (marqueeAnchor.current) {
+    if (marqueeAnchor.current || lassoPoints.current) {
       commitMarquee();
     }
     // Releasing the mouse during ghost-drag does NOT auto-commit per spec;
@@ -476,8 +531,8 @@ export function useCanvasInteraction(
   }, [commitMarquee]);
 
   const handleMouseLeave = useCallback(() => {
-    if (marqueeAnchor.current) {
-      // Treat leaving the canvas mid-drag as commit (using last known cell).
+    if (marqueeAnchor.current || lassoPoints.current) {
+      // Treat leaving the canvas mid-drag as commit (using last known points).
       commitMarquee();
     }
     ghostDragLastCell.current = null;

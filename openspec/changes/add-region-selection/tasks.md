@@ -164,13 +164,17 @@
 - [x] 7.2 Implement rectangle-marquee mouse path: track anchor cell
       via `marqueeAnchor` ref; mouse-move updates
       `setMarqueePreview` (live dashed rect on overlay); mouse-up
-      calls `setSelection(fromRect(...))` and clears preview.
-      Mouse-leave commits via the same path (using last preview).
-      `Shift` / `Ctrl` modifier branches arrive in slice C alongside
-      lasso. (Slice A)
-- [ ] 7.3 Implement lasso mouse path: collect points via
-      `lasso.appendPoint`, on mouse-up build mask via
-      `lasso.cellsInPolygon` and call `setSelection`. Manual verify.
+      calls `setSelection(fromRect(...), overrideMode)`. Mouse-leave
+      commits via the same path. (Slice A; modifier override added
+      in slice C — see 7.3.)
+- [x] 7.3 Implement lasso mouse path + Shift/Ctrl modifier override.
+      Lasso collects points in fractional grid coords with
+      `appendPoint(minDist = 5/cellSize)`; live preview is a dashed
+      polyline on the overlay; mouse-up builds mask via
+      `cellsInPolygon` and calls `setSelection(mask, overrideMode)`.
+      Modifier captured at mouseDown: Shift → `'add'`, Ctrl/Cmd →
+      `'subtract'`, else null (toolbar mode wins). Same override
+      applies to rect path. (Slice C)
 - [x] 7.4 Implement ghost interaction in `useCanvasInteraction.ts`:
       drag inside selection bbox starts move-ghost; drag inside ghost
       bbox calls `adjustGhost` with incremental cell deltas; click
