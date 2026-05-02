@@ -29,6 +29,9 @@ extensions: move and delete.
 - selection: add Mirror with an axis picker (click any horizontal or vertical
   grid line to set the axis) plus quick presets Flip-H and Flip-V that mirror
   around the selection bbox center.
+- selection: add Rotate 90° clockwise and counter-clockwise. Rotation pivots
+  around the selection bbox center, swaps line orientation (horizontal ↔
+  vertical), and is presented as a floating layer like move/mirror.
 - canvas: split the rendering pipeline into a static layer (existing) and an
   overlay layer (new) for ghost and ants. `pointer-events: none` on overlay so
   input still reaches the static canvas.
@@ -71,7 +74,8 @@ extensions: move and delete.
 
 ## Non-Goals
 
-- Rotation by 90° / 180° (user explicitly chose mirror, not rotate).
+- Rotation by arbitrary angle (only 90° CW / 90° CCW are in scope; 180°
+  can be reached via two 90° rotations).
 - Multi-clipboard / clipboard history (only one entry; new copy/cut overwrites).
 - Operating on `CellHighlight` row/column overlays — they remain stationary
   even when a selection covers them.

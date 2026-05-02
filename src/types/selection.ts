@@ -34,7 +34,13 @@ export type MirrorAxis =
 /**
  * Which transform produced the active ghost.
  */
-export type GhostKind = 'move' | 'paste' | 'mirror';
+export type GhostKind = 'move' | 'paste' | 'mirror' | 'rotate';
+
+/**
+ * 90° rotation direction in screen coordinates (y-down).
+ * `cw` = visual clockwise; `ccw` = visual counter-clockwise.
+ */
+export type RotationDirection = 'cw' | 'ccw';
 
 /**
  * Floating pre-commit preview state. The `lines` array already has the

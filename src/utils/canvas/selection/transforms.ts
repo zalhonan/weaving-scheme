@@ -1,4 +1,4 @@
-import type { Line, MirrorAxis } from '../../../types';
+import type { Line, MirrorAxis, RotationDirection } from '../../../types';
 
 /**
  * Translate lines by (dx, dy) in cell units. Pure — does not check bounds.
@@ -49,6 +49,72 @@ export const normalizeToOrigin = (lines: Line[]): Line[] => {
   }
   return translateLines(lines, -minX, -minY);
 };
+
+/**
+ * Rotate lines 90° (clockwise or counter-clockwise) around pivot `(cx, cy)`.
+ * Lines flip orientation: horizontal → vertical and vice versa.
+ *
+ * Screen coords (y-down). For non-square pivots (half-integer cx or cy),
+ * results are rounded to the nearest integer cell/line index — see design.md
+ * "Half-integer pivot rounding" for the rationale.
+ *
+ * Screen 90° CW transformations:
+ *   - Horizontal (x, y) → Vertical (cx + cy − y, x + cy − cx)
+ *   - Vertical   (x, y) → Horizontal (cx + cy − y − 1, x + cy − cx)
+ *
+ * Screen 90° CCW transformations:
+ *   - Horizontal (x, y) → Vertical (cx + y − cy, cy + cx − x − 1)
+ *   - Vertical   (x, y) → Horizontal (cx + y − cy, cy + cx − x)
+ */
+export const rotateLines = (
+  lines: Line[],
+  direction: RotationDirection,
+  cx: number,
+  cy: number,
+): Line[] =>
+  lines.map((line) => {
+    let nx: number;
+    let ny: number;
+    if (direction === 'cw') {
+      if (line.orientation === 'horizontal') {
+        nx = cx + cy - line.y;
+        ny = line.x + cy - cx;
+        return {
+          ...line,
+          x: Math.round(nx),
+          y: Math.round(ny),
+          orientation: 'vertical',
+        };
+      }
+      nx = cx + cy - line.y - 1;
+      ny = line.x + cy - cx;
+      return {
+        ...line,
+        x: Math.round(nx),
+        y: Math.round(ny),
+        orientation: 'horizontal',
+      };
+    }
+    // ccw
+    if (line.orientation === 'horizontal') {
+      nx = cx + line.y - cy;
+      ny = cy + cx - line.x - 1;
+      return {
+        ...line,
+        x: Math.round(nx),
+        y: Math.round(ny),
+        orientation: 'vertical',
+      };
+    }
+    nx = cx + line.y - cy;
+    ny = cy + cx - line.x;
+    return {
+      ...line,
+      x: Math.round(nx),
+      y: Math.round(ny),
+      orientation: 'horizontal',
+    };
+  });
 
 /**
  * Drop lines that lie outside the canvas. Used at commit time when a ghost

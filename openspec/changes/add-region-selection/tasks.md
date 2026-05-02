@@ -22,6 +22,8 @@
       `ClipboardEntry`. Run `npm run typecheck`.
 - [x] 1.2 Re-export new types from `src/types/index.ts`. Run
       `npm run typecheck`.
+- [x] 1.3 Extend `GhostKind` with `'rotate'`; add
+      `RotationDirection = 'cw' | 'ccw'`. Run `npm run typecheck`.
 
 ## 2. Store
 
@@ -60,6 +62,12 @@
       Run `npm run typecheck`.
 - [x] 2.9 Re-export `useSelectionStore` from `src/store/index.ts`.
       Run `npm run typecheck`.
+- [x] 2.10 Add `applyRotate(linesToRemove, linesToAdd)` to
+      `useCanvasStore` — same atomic shape as `applyMove` / `applyMirror`.
+- [x] 2.11 Add `beginRotateGhost(direction: RotationDirection)` to
+      `useSelectionStore`. Computes bbox center, calls
+      `rotateLines` / `rotateMask`, sets ghost with `kind: 'rotate'`.
+      `commitGhost` dispatches to `applyRotate` for that kind.
 
 ## 3. Utils
 
@@ -92,6 +100,17 @@
       mask with hole, disjoint mask. Run `npm run test`.
 - [x] 3.6 Re-export new utilities from
       `src/utils/canvas/index.ts`. Run `npm run typecheck`.
+- [x] 3.7 Add `rotateLines(lines, direction, cx, cy)` to
+      `src/utils/canvas/selection/transforms.ts`. Swaps line
+      orientation; rounds to nearest integer cell coord for
+      non-square bboxes. Tests cover: orientation flip (h ↔ v),
+      4 CW = identity for square bbox, CCW = inverse of CW, color
+      preservation, non-square rounding to integer.
+- [x] 3.8 Add `rotateMask(mask, direction, cx, cy)` to
+      `src/utils/canvas/selection/maskUtils.ts`. Same math as
+      `rotateLines` for cells. Tests cover: 2x2 corner rotation,
+      4 CW identity, CCW inverse, non-square dimension swap (4×2 →
+      2×4) with integer-only result, 3×3 with half-integer center.
 
 ## 4. Renderer / Overlay
 
@@ -128,6 +147,10 @@
       Slice D: Копия/Вырезать (when selection), Вставить (when clipboard).
       Slice E: Flip H, Flip V, По оси (when selection); axis-picker mode
       shows instruction + Cancel.
+- [x] 5.5 Add Rotate CW (`↻ 90°`) and Rotate CCW (`↺ 90°`) buttons
+      to `SelectionOps`, visible when a selection exists and no
+      ghost is active. Each button calls
+      `useSelectionStore.beginRotateGhost(direction)`.
 - [ ] 5.3 Update `HotkeysInfo.tsx` with new shortcuts: `V` /
       `B` (tool switch), `Delete`, `Ctrl/Cmd + C/X/V`, `Enter`
       (confirm ghost), `Escape` (cancel ghost), arrow keys (nudge

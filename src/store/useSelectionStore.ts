@@ -5,6 +5,7 @@ import type {
   GhostState,
   MirrorAxis,
   RefineMode,
+  RotationDirection,
   SelectionMask,
   Tool,
 } from '../types';
@@ -14,6 +15,7 @@ import {
   clipMaskToCanvas,
   fromRect,
   mirrorMask,
+  rotateMask,
   subtract,
   translate as translateMask,
   union,
@@ -23,6 +25,7 @@ import {
   clipLinesToCanvas,
   mirrorLines,
   normalizeToOrigin,
+  rotateLines,
   translateLines,
 } from '../utils/canvas/selection/transforms';
 
@@ -58,6 +61,7 @@ interface SelectionActions {
   beginMoveGhost: () => void;
   beginPasteGhost: (originCell?: { x: number; y: number }) => void;
   beginMirrorGhost: (axis: MirrorAxis) => void;
+  beginRotateGhost: (direction: RotationDirection) => void;
   adjustGhost: (dx: number, dy: number) => void;
   cancelGhost: () => void;
   commitGhost: () => void;
@@ -228,6 +232,27 @@ export const useSelectionStore = create<SelectionStore>()(
     });
   },
 
+  beginRotateGhost: (direction) => {
+    const { selection } = get();
+    if (selection === null) return;
+    const b = bbox(selection);
+    if (!b) return;
+    const cx = (b.minX + b.maxX + 1) / 2;
+    const cy = (b.minY + b.maxY + 1) / 2;
+    const { lines: allLines } = useCanvasStore.getState();
+    const selectedLines = getLinesInMask(selection, allLines);
+    if (selectedLines.length === 0) return;
+    set({
+      ghost: {
+        kind: 'rotate',
+        lines: rotateLines(selectedLines, direction, cx, cy),
+        sourceMask: new Set(selection),
+        destMask: rotateMask(selection, direction, cx, cy),
+      },
+      axisPicker: null,
+    });
+  },
+
   adjustGhost: (dx, dy) => {
     const { ghost } = get();
     if (ghost === null) return;
@@ -266,6 +291,11 @@ export const useSelectionStore = create<SelectionStore>()(
       canvas.applyMove(removed, linesToAdd);
     } else if (ghost.kind === 'paste') {
       canvas.applyPaste(linesToAdd);
+    } else if (ghost.kind === 'rotate') {
+      const removed = ghost.sourceMask
+        ? getLinesInMask(ghost.sourceMask, canvas.lines)
+        : [];
+      canvas.applyRotate(removed, linesToAdd);
     } else {
       const removed = ghost.sourceMask
         ? getLinesInMask(ghost.sourceMask, canvas.lines)

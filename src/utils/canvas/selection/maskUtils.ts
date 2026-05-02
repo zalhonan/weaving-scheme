@@ -1,4 +1,4 @@
-import type { SelectionMask } from '../../../types';
+import type { RotationDirection, SelectionMask } from '../../../types';
 
 // `:` separator (not `-`) so negative coordinates round-trip cleanly through
 // `cellKey` ↔ `parseCellKey`. SelectionMask is in-memory only, so this format
@@ -97,6 +97,37 @@ export const translate = (mask: SelectionMask, dx: number, dy: number): Selectio
   for (const k of mask) {
     const { x, y } = parseCellKey(k);
     next.add(cellKey(x + dx, y + dy));
+  }
+  return next;
+};
+
+/**
+ * Rotate a cell mask 90° around pivot `(cx, cy)`. Screen coordinates
+ * (y-down). For non-square bboxes (half-integer pivot), results are rounded
+ * to the nearest integer cell.
+ *
+ *   CW : (x, y) → (cx + cy − y − 1, x + cy − cx)
+ *   CCW: (x, y) → (cx + y − cy, cy + cx − x − 1)
+ */
+export const rotateMask = (
+  mask: SelectionMask,
+  direction: RotationDirection,
+  cx: number,
+  cy: number,
+): SelectionMask => {
+  const next = new Set<string>();
+  for (const k of mask) {
+    const { x, y } = parseCellKey(k);
+    let nx: number;
+    let ny: number;
+    if (direction === 'cw') {
+      nx = cx + cy - y - 1;
+      ny = x + cy - cx;
+    } else {
+      nx = cx + y - cy;
+      ny = cy + cx - x - 1;
+    }
+    next.add(cellKey(Math.round(nx), Math.round(ny)));
   }
   return next;
 };

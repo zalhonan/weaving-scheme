@@ -350,6 +350,62 @@ quick presets that mirror around the selection bbox center.
 - **AND** only the position component (x for vertical-axis mirror, y for
   horizontal-axis mirror) is reflected
 
+### Requirement: Rotate
+
+The system SHALL rotate the selected pattern by 90° clockwise or
+counter-clockwise around the bbox center, presenting the result as a
+floating layer that the user can adjust before commit. Rotation swaps
+line orientation (horizontal lines become vertical and vice versa)
+and swaps the bbox width/height.
+
+#### Scenario: Rotate 90° clockwise
+
+- **WHEN** the user invokes "Повернуть ↻" (Rotate CW) while a selection
+  is active
+- **THEN** a rotate-ghost is created with each line transformed by the
+  90° CW rotation around the bbox center: horizontal `(x, y)` → vertical
+  `(cx + cy − y, x + cy − cx)`; vertical `(x, y)` → horizontal
+  `(cx + cy − y − 1, x + cy − cx)` (where `(cx, cy)` is the bbox center)
+- **AND** the rotated bbox dimensions are swapped relative to the source
+
+#### Scenario: Rotate 90° counter-clockwise
+
+- **WHEN** the user invokes "Повернуть ↺" (Rotate CCW) while a selection
+  is active
+- **THEN** a rotate-ghost is created using the inverse transformation:
+  horizontal `(x, y)` → vertical `(cx + y − cy, cy + cx − x − 1)`;
+  vertical `(x, y)` → horizontal `(cx + y − cy, cy + cx − x)`
+
+#### Scenario: Four CW rotations restore the original
+
+- **GIVEN** a selection
+- **WHEN** the user applies Rotate CW four times in succession (each
+  followed by commit)
+- **THEN** the resulting line set is geometrically identical to the
+  original (modulo any cells lost off-canvas during intermediate steps)
+
+#### Scenario: Non-square bbox rotation
+
+- **WHEN** the selection bbox is non-square (width ≠ height)
+- **THEN** the rotation pivot is the bbox center, which may be a
+  half-integer coordinate
+- **AND** rotated cell and line coordinates are rounded to the nearest
+  integer to keep the grid alignment
+- **AND** the rotated piece may shift relative to the source; off-canvas
+  portions are dropped on commit per the standard clip-on-commit rule
+
+#### Scenario: Rotate behaves as a floating layer
+
+- **WHEN** a rotate-ghost is active
+- **THEN** the source lines are hidden on the static canvas (image-editor
+  floating-layer model)
+- **AND** the rotated lines render at full opacity on the overlay with
+  marching ants around the rotated mask
+- **AND** the user can drag the ghost or use arrow keys to translate it
+  before commit, exactly like a move-ghost
+- **AND** `Enter` commits via `applyRotate` (one undoable transaction);
+  `Escape` cancels and restores the source
+
 ### Requirement: Floating Layer Mechanic
 
 The system SHALL render a floating layer during move, paste, and mirror

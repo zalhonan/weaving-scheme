@@ -12,6 +12,7 @@ import {
   translate,
   mirrorMask,
   clipMaskToCanvas,
+  rotateMask,
 } from '../../../../src/utils/canvas/selection/maskUtils';
 
 describe('maskUtils', () => {
@@ -164,6 +165,53 @@ describe('maskUtils', () => {
       m.add(cellKey(100, 100));
       const r = clipMaskToCanvas(m, 5, 5);
       expect(r.size).toBe(0);
+    });
+  });
+
+  describe('rotateMask', () => {
+    it('CW rotates top-left to top-right in a 2x2 bbox', () => {
+      // 2x2 bbox: cells (0..1, 0..1), center (1, 1).
+      const m = fromRect(0, 0, 0, 0); // top-left only
+      const r = rotateMask(m, 'cw', 1, 1);
+      expect(hasCell(r, 1, 0)).toBe(true);
+      expect(r.size).toBe(1);
+    });
+
+    it('four CW rotations restore the original (square bbox)', () => {
+      const m = fromRect(0, 0, 1, 1);
+      let r = m;
+      for (let i = 0; i < 4; i++) r = rotateMask(r, 'cw', 1, 1);
+      expect(r).toEqual(m);
+    });
+
+    it('CCW is inverse of CW for square bbox', () => {
+      const m = fromRect(0, 0, 1, 1);
+      const back = rotateMask(rotateMask(m, 'cw', 1, 1), 'ccw', 1, 1);
+      expect(back).toEqual(m);
+    });
+
+    it('non-square bbox produces integer cell coords (rounded)', () => {
+      // 4x2 bbox: cells (0..3, 0..1), center (2, 1).
+      const m = fromRect(0, 0, 3, 1);
+      const r = rotateMask(m, 'cw', 2, 1);
+      // All result keys must be integer-coord cells
+      for (const k of r) {
+        const { x, y } = parseCellKey(k);
+        expect(Number.isInteger(x)).toBe(true);
+        expect(Number.isInteger(y)).toBe(true);
+      }
+      // Width and height swap: 4x2 bbox → 2x4 bbox after rotation
+      const b = bbox(r);
+      expect(b!.width).toBe(2);
+      expect(b!.height).toBe(4);
+    });
+
+    it('square bbox with half-integer center (3x3) rotates without rounding loss', () => {
+      // 3x3 bbox: cells (0..2, 0..2), center (1.5, 1.5).
+      const m = fromRect(0, 0, 2, 2);
+      let r = m;
+      for (let i = 0; i < 4; i++) r = rotateMask(r, 'cw', 1.5, 1.5);
+      expect(r).toEqual(m);
     });
   });
 

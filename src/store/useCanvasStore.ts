@@ -39,6 +39,7 @@ interface CanvasActions {
   applyDelete: (linesToRemove: Line[]) => void;
   applyPaste: (linesToAdd: Line[]) => void;
   applyMirror: (linesToRemove: Line[], linesToAdd: Line[]) => void;
+  applyRotate: (linesToRemove: Line[], linesToAdd: Line[]) => void;
 }
 
 type CanvasStore = CanvasState & CanvasActions;
@@ -392,6 +393,19 @@ export const useCanvasStore = create<CanvasStore>()(
         },
 
         applyMirror: (linesToRemove, linesToAdd) => {
+          set((state) => {
+            const newLines = new Map(state.lines);
+            for (const line of linesToRemove) {
+              newLines.delete(getLineKey(line.x, line.y, line.orientation));
+            }
+            for (const line of linesToAdd) {
+              newLines.set(getLineKey(line.x, line.y, line.orientation), line);
+            }
+            return { lines: newLines };
+          });
+        },
+
+        applyRotate: (linesToRemove, linesToAdd) => {
           set((state) => {
             const newLines = new Map(state.lines);
             for (const line of linesToRemove) {

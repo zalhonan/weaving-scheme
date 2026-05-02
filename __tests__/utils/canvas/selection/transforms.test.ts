@@ -5,6 +5,7 @@ import {
   normalizeToOrigin,
   linesBbox,
   clipLinesToCanvas,
+  rotateLines,
 } from '../../../../src/utils/canvas/selection/transforms';
 import type { Line, MirrorAxis } from '../../../../src/types';
 
@@ -145,6 +146,75 @@ describe('clipLinesToCanvas', () => {
       10,
     );
     expect(r.length).toBe(0);
+  });
+});
+
+describe('rotateLines', () => {
+  // 2x2 square bbox: cells (0..1, 0..1), center (1, 1).
+  const cx = 1;
+  const cy = 1;
+
+  it('CW rotates a horizontal line to a vertical line', () => {
+    // Top edge of cell (0, 0): horizontal at (0, 0).
+    // After 90° CW around (1,1): right edge of cell (1, 0) = vertical at (2, 0).
+    const r = rotateLines([L(0, 0, 'horizontal')], 'cw', cx, cy);
+    expect(r[0].orientation).toBe('vertical');
+    expect(r[0].x).toBe(2);
+    expect(r[0].y).toBe(0);
+  });
+
+  it('CW rotates a vertical line to a horizontal line', () => {
+    // Left edge of cell (0, 0): vertical at (0, 0).
+    // After 90° CW: top edge of cell (1, 0) = horizontal at (1, 0).
+    const r = rotateLines([L(0, 0, 'vertical')], 'cw', cx, cy);
+    expect(r[0].orientation).toBe('horizontal');
+    expect(r[0].x).toBe(1);
+    expect(r[0].y).toBe(0);
+  });
+
+  it('CCW is the inverse of CW for a single line', () => {
+    const original = L(0, 0, 'horizontal', '#abc');
+    const cw = rotateLines([original], 'cw', cx, cy);
+    const back = rotateLines(cw, 'ccw', cx, cy);
+    expect(back[0].x).toBe(original.x);
+    expect(back[0].y).toBe(original.y);
+    expect(back[0].orientation).toBe(original.orientation);
+    expect(back[0].color).toBe(original.color);
+  });
+
+  it('four CW rotations restore the original (square bbox)', () => {
+    const lines = [
+      L(0, 0, 'horizontal'),
+      L(1, 1, 'vertical'),
+      L(0, 2, 'horizontal'),
+    ];
+    let r = lines;
+    for (let i = 0; i < 4; i++) {
+      r = rotateLines(r, 'cw', cx, cy);
+    }
+    expect(r.length).toBe(lines.length);
+    const setOrig = new Set(
+      lines.map((l) => `${l.orientation}:${l.x}:${l.y}`),
+    );
+    const setRot = new Set(r.map((l) => `${l.orientation}:${l.x}:${l.y}`));
+    expect(setRot).toEqual(setOrig);
+  });
+
+  it('preserves color across rotation', () => {
+    const r = rotateLines([L(0, 0, 'horizontal', '#fa3')], 'cw', 1, 1);
+    expect(r[0].color).toBe('#fa3');
+  });
+
+  it('non-square bbox rounds to nearest integer cell', () => {
+    // 1x2 bbox: cells (0,0..1), center (0.5, 1).
+    // CW of horizontal (0, 0):
+    //   nx = 0.5 + 1 - 0 = 1.5 → round 2 (or 1 with banker)
+    //   ny = 0 + 1 - 0.5 = 0.5 → round 1 (banker)
+    // Math.round in JS rounds 0.5 UP.
+    const r = rotateLines([L(0, 0, 'horizontal')], 'cw', 0.5, 1);
+    expect(r[0].orientation).toBe('vertical');
+    expect(Number.isInteger(r[0].x)).toBe(true);
+    expect(Number.isInteger(r[0].y)).toBe(true);
   });
 });
 

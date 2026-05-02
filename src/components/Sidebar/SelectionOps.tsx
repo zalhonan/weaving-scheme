@@ -66,6 +66,11 @@ export const SelectionOps: React.FC = () => {
 
   const onMirror = () => useSelectionStore.getState().beginAxisPicker();
 
+  const onRotateCW = () =>
+    useSelectionStore.getState().beginRotateGhost('cw');
+  const onRotateCCW = () =>
+    useSelectionStore.getState().beginRotateGhost('ccw');
+
   // Axis picker mode: show instruction + cancel only.
   if (axisPicker?.active) {
     return (
@@ -163,29 +168,47 @@ export const SelectionOps: React.FC = () => {
         )}
       </div>
       {selection && (
-        <div className={styles.undoRedoButtons}>
-          <button
-            className={styles.undoRedoButton}
-            onClick={onFlipH}
-            title="Отразить горизонтально (вокруг центра выделения)"
-          >
-            ⇄ Flip H
-          </button>
-          <button
-            className={styles.undoRedoButton}
-            onClick={onFlipV}
-            title="Отразить вертикально (вокруг центра выделения)"
-          >
-            ⇅ Flip V
-          </button>
-          <button
-            className={styles.undoRedoButton}
-            onClick={onMirror}
-            title="Зеркало по выбранной оси"
-          >
-            По оси
-          </button>
-        </div>
+        <>
+          <div className={styles.undoRedoButtons}>
+            <button
+              className={styles.undoRedoButton}
+              onClick={onFlipH}
+              title="Отразить горизонтально (вокруг центра выделения)"
+            >
+              ⇄ Flip H
+            </button>
+            <button
+              className={styles.undoRedoButton}
+              onClick={onFlipV}
+              title="Отразить вертикально (вокруг центра выделения)"
+            >
+              ⇅ Flip V
+            </button>
+            <button
+              className={styles.undoRedoButton}
+              onClick={onMirror}
+              title="Зеркало по выбранной оси"
+            >
+              По оси
+            </button>
+          </div>
+          <div className={styles.undoRedoButtons}>
+            <button
+              className={styles.undoRedoButton}
+              onClick={onRotateCCW}
+              title="Повернуть на 90° против часовой"
+            >
+              ↺ 90°
+            </button>
+            <button
+              className={styles.undoRedoButton}
+              onClick={onRotateCW}
+              title="Повернуть на 90° по часовой"
+            >
+              ↻ 90°
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

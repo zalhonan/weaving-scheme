@@ -451,10 +451,71 @@ target.
   invalidate cells in the mask. Mitigation: those store actions also clear
   the selection (one extra line each).
 
+## Rotation (90° CW / CCW)
+
+Rotation reuses the floating-layer mechanic — same `GhostState`, same
+overlay rendering, same commit/cancel paths. Two new conceptual ops:
+
+- `Rotate CW` → rotate-ghost with lines transformed 90° clockwise
+- `Rotate CCW` → rotate-ghost with lines transformed 90° counter-clockwise
+
+A new `applyRotate(linesToRemove, linesToAdd)` action is exposed on
+`useCanvasStore` for symmetry with `applyMove` / `applyMirror`. It has the
+same shape (atomic remove + add) so each commit is one zundo entry.
+
+### Rotation math
+
+The pivot is the bbox center `(cx, cy)` where:
+
+- `cx = (bbox.minX + bbox.maxX + 1) / 2`
+- `cy = (bbox.minY + bbox.maxY + 1) / 2`
+
+For square bboxes, `(cx, cy)` is integer; for non-square, it may be a
+half-integer.
+
+Lines flip orientation (horizontal ↔ vertical) under any 90° rotation.
+Coordinates transform as follows.
+
+**Screen 90° CW** (the user's "clockwise"; in screen coords with y-down,
+this is mathematical CCW):
+
+- Horizontal `(x, y)` → Vertical `(cx + cy − y, x + cy − cx)`
+- Vertical   `(x, y)` → Horizontal `(cx + cy − y − 1, x + cy − cx)`
+- Cell `(x, y)` → `(cx + cy − y − 1, x + cy − cx)`
+
+**Screen 90° CCW**:
+
+- Horizontal `(x, y)` → Vertical `(cx + y − cy, cy + cx − x − 1)`
+- Vertical   `(x, y)` → Horizontal `(cx + y − cy, cy + cx − x)`
+- Cell `(x, y)` → `(cx + y − cy, cy + cx − x − 1)`
+
+### Half-integer pivot rounding
+
+When the bbox is non-square, the center coordinate is a half-integer.
+Plugging that into the formulas above produces non-integer cell or line
+coords (e.g. `2.5`). Cell and line indices must be integer, so the result
+is **rounded to the nearest integer** (`Math.round`).
+
+This means a non-square rotation can shift the piece by up to half a cell
+relative to the geometric ideal. Visually this is acceptable (the rotated
+shape lands "near" the original bbox), and the user can nudge it with
+arrow keys / drag if they want a different position before commit.
+
+For square bboxes (most common in cross-stitch and weaving patterns) the
+formulas yield exact integer results — no rounding artefacts.
+
+### Where rotation lands
+
+For square bboxes, the rotated piece occupies the same bbox as the source.
+For non-square bboxes, the rotated bbox has width and height swapped, so
+the piece extends beyond the original footprint. If that extension goes
+off-canvas (e.g. a 10×2 piece rotated near the canvas edge), the standard
+**clip-on-commit** rule applies: the visible portion lands, the rest is
+dropped, the clipboard (if any) is unchanged.
+
 ## Out of scope (deferred to future changes)
 
-- Rotation by 90° or 180° (different aspect-ratio handling needed; user
-  explicitly chose mirror over rotate).
+- Rotation by arbitrary angle (only 90° CW and 90° CCW; 180° = two CW).
 - Multi-clipboard or clipboard history.
 - Cross-scheme paste.
 - Selection serialization (save selection across reloads).
