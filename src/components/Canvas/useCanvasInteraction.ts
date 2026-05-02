@@ -19,7 +19,29 @@ import {
   cellsInPolygon,
   type Point,
 } from '../../utils/canvas/selection/lasso';
-import type { RefineMode } from '../../types';
+import type { MirrorAxis, RefineMode } from '../../types';
+
+/**
+ * Pick the nearest grid axis (horizontal or vertical line) to a fractional
+ * grid coordinate. Returns null if the cursor is well outside the canvas.
+ */
+const nearestAxis = (
+  gridX: number,
+  gridY: number,
+  width: number,
+  height: number,
+): MirrorAxis | null => {
+  if (gridX < -1 || gridX > width + 1 || gridY < -1 || gridY > height + 1) {
+    return null;
+  }
+  const ny = Math.max(0, Math.min(height, Math.round(gridY)));
+  const nx = Math.max(0, Math.min(width, Math.round(gridX)));
+  const distH = Math.abs(gridY - ny);
+  const distV = Math.abs(gridX - nx);
+  return distH < distV
+    ? { orientation: 'horizontal', y: ny }
+    : { orientation: 'vertical', x: nx };
+};
 import { isEraser } from '../../constants/colors';
 
 type MouseButton = 'left' | 'right' | 'middle' | null;
@@ -126,6 +148,14 @@ export function useCanvasInteraction(
         const cellY = Math.floor(gridY);
         const inBounds =
           cellX >= 0 && cellX < width && cellY >= 0 && cellY < height;
+
+        // Axis-picker mode takes priority — click confirms the axis,
+        // creating a mirror-ghost.
+        if (sel.axisPicker?.active) {
+          const axis = nearestAxis(gridX, gridY, width, height);
+          if (axis) sel.confirmAxis(axis);
+          return;
+        }
 
         // Ghost active: clicks inside ghost bbox = drag-ghost; clicks outside = commit.
         if (sel.ghost) {
@@ -340,6 +370,14 @@ export function useCanvasInteraction(
         const deltaY = y - lastPanPos.current.y;
         pan(deltaX, deltaY);
         lastPanPos.current = { x, y };
+        return;
+      }
+
+      // Axis-picker hover: track nearest grid line as the candidate axis.
+      const sel = useSelectionStore.getState();
+      if (sel.axisPicker?.active) {
+        const { gridX, gridY } = screenToGrid(x, y, offsetX, offsetY, cellSize);
+        sel.setAxisCandidate(nearestAxis(gridX, gridY, width, height));
         return;
       }
 

@@ -43,7 +43,7 @@ interface SelectionState {
   refineMode: RefineMode;
   ghost: GhostState | null;
   clipboard: ClipboardEntry | null;
-  axisPicker: { active: boolean } | null;
+  axisPicker: { active: boolean; candidate: MirrorAxis | null } | null;
   marqueePreview: MarqueePreview | null;
 }
 
@@ -67,6 +67,7 @@ interface SelectionActions {
   pasteFromClipboard: (originCell?: { x: number; y: number }) => void;
 
   beginAxisPicker: () => void;
+  setAxisCandidate: (axis: MirrorAxis | null) => void;
   confirmAxis: (axis: MirrorAxis) => void;
   cancelAxisPicker: () => void;
 }
@@ -315,7 +316,27 @@ export const useSelectionStore = create<SelectionStore>()(
 
   beginAxisPicker: () => {
     if (get().selection === null) return;
-    set({ axisPicker: { active: true } });
+    set({ axisPicker: { active: true, candidate: null }, ghost: null });
+  },
+
+  setAxisCandidate: (axis) => {
+    const { axisPicker } = get();
+    if (!axisPicker?.active) return;
+    if (
+      axisPicker.candidate === axis ||
+      (axisPicker.candidate &&
+        axis &&
+        axisPicker.candidate.orientation === axis.orientation &&
+        ((axis.orientation === 'vertical' &&
+          axisPicker.candidate.orientation === 'vertical' &&
+          axisPicker.candidate.x === axis.x) ||
+          (axis.orientation === 'horizontal' &&
+            axisPicker.candidate.orientation === 'horizontal' &&
+            axisPicker.candidate.y === axis.y)))
+    ) {
+      return; // no-op if same axis
+    }
+    set({ axisPicker: { ...axisPicker, candidate: axis } });
   },
 
   confirmAxis: (axis) => {

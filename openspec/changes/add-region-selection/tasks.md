@@ -110,8 +110,10 @@
       Also draws live marquee preview rect. (Slice A)
 - [x] 4.4 Implement ghost-line drawing on the overlay canvas at ~50 %
       opacity, 2 px stroke, per-line color preserved. (Slice B)
-- [ ] 4.5 Implement axis-picker overlay: highlight the nearest grid
-      line under the cursor in axis-picker mode. Manual verify.
+- [x] 4.5 Implement axis-picker overlay: a dashed orange line crossing
+      the canvas at the candidate axis (horizontal or vertical grid line
+      nearest the cursor). Animated via the same dashOffset as ants.
+      (Slice E)
 
 ## 5. Components — Sidebar
 
@@ -120,11 +122,12 @@
       `useSelectionStore.setTool`. Lasso button is functional only after
       slice C — clicking it switches the mode but selection-lasso input
       is not yet wired. (Slice A)
-- [x] 5.2 (partial — slices B+D) `SelectionOps` is visible when
-      `selection || ghost || clipboard` exists. Slice B: Move, Delete
-      (when selection), Confirm, Cancel (when ghost). Slice D adds:
-      Копия, Вырезать (when selection), Вставить (when clipboard). The
-      Mirror / Flip-H / Flip-V buttons land in slice E.
+- [x] 5.2 (slices B+D+E) `SelectionOps` is visible when
+      `selection || ghost || clipboard || axisPicker` exists.
+      Slice B: Move/Delete (when selection), Confirm/Cancel (when ghost).
+      Slice D: Копия/Вырезать (when selection), Вставить (when clipboard).
+      Slice E: Flip H, Flip V, По оси (when selection); axis-picker mode
+      shows instruction + Cancel.
 - [ ] 5.3 Update `HotkeysInfo.tsx` with new shortcuts: `V` /
       `B` (tool switch), `Delete`, `Ctrl/Cmd + C/X/V`, `Enter`
       (confirm ghost), `Escape` (cancel ghost), arrow keys (nudge
@@ -179,10 +182,10 @@
       drag inside selection bbox starts move-ghost; drag inside ghost
       bbox calls `adjustGhost` with incremental cell deltas; click
       outside ghost bbox commits. (Slice B)
-- [ ] 7.5 Implement axis-picker interaction: when
-      `axisPicker.active`, mouse-move only updates overlay (no
-      drawing); click on a grid line within proximity threshold
-      calls `confirmAxis`. Manual verify.
+- [x] 7.5 Implement axis-picker interaction: when `axisPicker.active`,
+      mouse-move calls `setAxisCandidate(nearestAxis(...))` (always
+      picks the nearest horizontal or vertical grid line); click calls
+      `confirmAxis(nearestAxis(...))`. (Slice E)
 - [x] 7.6 (partial — slices A+B+D) `useCanvasShortcuts.ts` handles:
       `Escape`, `Enter`, `Delete`/`Backspace`, arrow keys (with
       auto-create move-ghost from selection), `Ctrl/Cmd+Z` /

@@ -22,7 +22,8 @@ export function useOverlayRenderer() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const { selection, marqueePreview, ghost } = useSelectionStore.getState();
+    const { selection, marqueePreview, ghost, axisPicker } =
+      useSelectionStore.getState();
     const { offsetX, offsetY, cellSize } = useViewportStore.getState();
     const { width: canvasWidth, height: canvasHeight } = useCanvasStore.getState();
 
@@ -42,6 +43,7 @@ export function useOverlayRenderer() {
       selectionSegments: segments,
       marqueePreview,
       ghostLines: ghost ? ghost.lines : [],
+      axisCandidate: axisPicker?.candidate ?? null,
       dashOffset: dashOffsetRef.current,
     });
   }, []);

@@ -1,5 +1,5 @@
 import { CANVAS_CONSTANTS } from '../../constants';
-import type { Line } from '../../types';
+import type { Line, MirrorAxis } from '../../types';
 import type { Segment } from './selection/marchingAnts';
 import type { MarqueePreview } from '../../store/useSelectionStore';
 
@@ -20,6 +20,9 @@ export interface OverlayRenderOptions {
    * to the grid area. Off-canvas portions are visually hidden but remain
    * in the array — they are dropped at commit time. */
   ghostLines: Line[];
+  /** Mirror axis preview while axis-picker is active (highlighted across
+   * the canvas). null when no picker or no candidate yet. */
+  axisCandidate: MirrorAxis | null;
   /** Marching-ants animation phase, advanced ~0.5 px / frame. */
   dashOffset: number;
 }
@@ -131,6 +134,40 @@ const drawMarquee = (
   ctx.setLineDash([]);
 };
 
+const drawAxisPreview = (
+  ctx: CanvasRenderingContext2D,
+  axis: MirrorAxis,
+  offsetX: number,
+  offsetY: number,
+  cellSize: number,
+  canvasWidth: number,
+  canvasHeight: number,
+  dashOffset: number,
+): void => {
+  ctx.save();
+  ctx.strokeStyle = '#ff6b00'; // distinctive orange for axis picker
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 4]);
+  ctx.lineDashOffset = -dashOffset;
+  ctx.beginPath();
+  if (axis.orientation === 'vertical') {
+    const sx = gridToScreen(axis.x, 0, offsetX, offsetY, cellSize).x;
+    const sy0 = gridToScreen(0, 0, offsetX, offsetY, cellSize).y;
+    const sy1 = gridToScreen(0, canvasHeight, offsetX, offsetY, cellSize).y;
+    ctx.moveTo(sx, sy0);
+    ctx.lineTo(sx, sy1);
+  } else {
+    const sy = gridToScreen(0, axis.y, offsetX, offsetY, cellSize).y;
+    const sx0 = gridToScreen(0, 0, offsetX, offsetY, cellSize).x;
+    const sx1 = gridToScreen(canvasWidth, 0, offsetX, offsetY, cellSize).x;
+    ctx.moveTo(sx0, sy);
+    ctx.lineTo(sx1, sy);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+};
+
 const drawGhost = (
   ctx: CanvasRenderingContext2D,
   lines: Line[],
@@ -178,6 +215,7 @@ export function renderOverlay(
     selectionSegments,
     marqueePreview,
     ghostLines,
+    axisCandidate,
     dashOffset,
   } = options;
 
@@ -211,6 +249,18 @@ export function renderOverlay(
   drawAnts(ctx, selectionSegments, offsetX, offsetY, cellSize, dashOffset);
   if (marqueePreview) {
     drawMarquee(ctx, marqueePreview, offsetX, offsetY, cellSize, dashOffset);
+  }
+  if (axisCandidate) {
+    drawAxisPreview(
+      ctx,
+      axisCandidate,
+      offsetX,
+      offsetY,
+      cellSize,
+      canvasWidth,
+      canvasHeight,
+      dashOffset,
+    );
   }
 
   ctx.restore();
