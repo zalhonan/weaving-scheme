@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type {
   ClipboardEntry,
   GhostState,
@@ -127,7 +128,11 @@ const pasteFootprintMask = (
   );
 };
 
-export const useSelectionStore = create<SelectionStore>((set, get) => ({
+const CLIPBOARD_STORAGE_KEY = 'weaving-scheme-clipboard';
+
+export const useSelectionStore = create<SelectionStore>()(
+  persist<SelectionStore, [], [], { clipboard: ClipboardEntry | null }>(
+    (set, get) => ({
   ...initialState,
 
   setTool: (tool) => {
@@ -187,12 +192,33 @@ export const useSelectionStore = create<SelectionStore>((set, get) => ({
   },
 
   beginPasteGhost: (originCell) => {
-    const { clipboard } = get();
+    const { clipboard, selection } = get();
     if (clipboard === null || clipboard.lines.length === 0) return;
     const { width, height } = useCanvasStore.getState();
-    // Default to (1, 1) if no origin hint given (so it doesn't sit at canvas edge).
-    let ox = originCell?.x ?? 1;
-    let oy = originCell?.y ?? 1;
+    // Origin priority:
+    //   1. Explicit `originCell` (e.g. cursor position from a future
+    //      cursor-aware paste).
+    //   2. Top-left of the active selection bbox — paste lands "where I'm
+    //      looking" (image-editor convention).
+    //   3. (1, 1) from canvas origin so the floating layer is visible.
+    let ox: number;
+    let oy: number;
+    if (originCell) {
+      ox = originCell.x;
+      oy = originCell.y;
+    } else if (selection) {
+      const b = bbox(selection);
+      if (b) {
+        ox = b.minX;
+        oy = b.minY;
+      } else {
+        ox = 1;
+        oy = 1;
+      }
+    } else {
+      ox = 1;
+      oy = 1;
+    }
     // Clamp so the bbox fits inside the canvas.
     if (ox + clipboard.bbox.width > width) ox = Math.max(0, width - clipboard.bbox.width);
     if (oy + clipboard.bbox.height > height) oy = Math.max(0, height - clipboard.bbox.height);
@@ -316,7 +342,16 @@ export const useSelectionStore = create<SelectionStore>((set, get) => ({
   },
 
   cancelAxisPicker: () => set({ axisPicker: null }),
-}));
+}),
+    {
+      name: CLIPBOARD_STORAGE_KEY,
+      storage: createJSONStorage(() => localStorage),
+      // Persist ONLY the clipboard. Selection / ghost / tool / refineMode
+      // / axisPicker / marqueePreview stay session-only.
+      partialize: (state) => ({ clipboard: state.clipboard }),
+    },
+  ),
+);
 
 /**
  * Clipboard bbox is the cell-mask bbox (cells), not the line bbox.
@@ -343,4 +378,30 @@ useCanvasStore.subscribe((state) => {
     useSelectionStore.getState().clearAll();
   }
 });
+
+// ---------------------------------------------------------------------------
+// Cross-tab clipboard sync. The persist middleware writes to localStorage on
+// every state change; the `storage` event fires in OTHER tabs of the same
+// origin, letting us mirror clipboard updates between editor windows.
+// JSON.stringify equality guards against feedback loops if a browser fires
+// `storage` for same-value writes.
+// ---------------------------------------------------------------------------
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key !== CLIPBOARD_STORAGE_KEY) return;
+    let next: ClipboardEntry | null = null;
+    if (e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue) as { state?: { clipboard?: ClipboardEntry | null } };
+        next = parsed.state?.clipboard ?? null;
+      } catch {
+        return;
+      }
+    }
+    const current = useSelectionStore.getState().clipboard;
+    if (JSON.stringify(current) !== JSON.stringify(next)) {
+      useSelectionStore.setState({ clipboard: next });
+    }
+  });
+}
 

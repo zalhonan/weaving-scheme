@@ -66,6 +66,26 @@ interface ClipboardEntry {
 - A dedicated module is the natural place to subscribe to canvas-store
   temporal events for the "clear-on-undo/redo" coupling.
 
+### Clipboard persistence and cross-tab sync
+
+The `clipboard` slice (and only that slice) is wrapped in Zustand's `persist`
+middleware writing to localStorage under the key `weaving-scheme-clipboard`.
+Effects:
+
+- A copy/cut survives page reload — paste in a new session uses the same
+  clipboard.
+- Two open tabs of the same origin share clipboards: a `storage`-event
+  listener (registered at module load) mirrors clipboard changes from
+  other tabs into the local store. Equality is checked via JSON.stringify
+  to suppress no-op re-emits and avoid feedback loops.
+- The rest of selection state (`tool`, `selection`, `ghost`, `refineMode`,
+  `axisPicker`, `marqueePreview`) stays in memory only. Each tab keeps its
+  own active selection and ghost — only the clipboard is shared.
+
+Because the persisted key is new (not a migration of `useCanvasStore`),
+old browsers / saved schemes are unaffected. A missing key simply means an
+empty clipboard.
+
 ## Hybrid model — derived lines (inclusive boundary)
 
 The user's selection unit is a cell set, but the operands of move / copy /

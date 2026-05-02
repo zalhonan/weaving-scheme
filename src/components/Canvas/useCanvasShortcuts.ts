@@ -67,6 +67,29 @@ export function useCanvasShortcuts(): void {
         return;
       }
 
+      // Clipboard. Guarded so they don't fire mid-ghost (user must commit/cancel first).
+      if (isMod && key === 'c') {
+        if (sel.selection && !sel.ghost) {
+          sel.copySelection();
+          e.preventDefault();
+        }
+        return;
+      }
+      if (isMod && key === 'x') {
+        if (sel.selection && !sel.ghost) {
+          sel.cutSelection();
+          e.preventDefault();
+        }
+        return;
+      }
+      if (isMod && key === 'v') {
+        if (sel.clipboard && !sel.ghost) {
+          sel.pasteFromClipboard();
+          e.preventDefault();
+        }
+        return;
+      }
+
       if (e.key === 'Escape') {
         if (sel.ghost) {
           sel.cancelGhost();

@@ -50,11 +50,15 @@ extensions: move and delete.
     `useCanvasTouchInteraction.ts` to branch on tool
   - `src/components/Sidebar/*` (tool buttons + ops section + hotkeys),
     `MobileToolbar.tsx`, `GestureHints.tsx`
-- **Persisted localStorage migration:** **none required.** Selection, ghost,
-  axis-picker state, and clipboard live in the new `useSelectionStore`, which
-  is session-only. The persisted `useCanvasStore` shape (`width`, `height`,
-  `lines`, `highlights`, `currentColor`) is unchanged — new actions only mutate
-  `lines`. Undo/redo behavior preserved for all canvas mutations.
+- **Persisted localStorage migration:** the existing `useCanvasStore` shape
+  (`width`, `height`, `lines`, `highlights`, `currentColor`) is **unchanged** —
+  new actions only mutate `lines`, so undo/redo behavior is preserved. A
+  **new** persisted key `weaving-scheme-clipboard` is introduced by the
+  `useSelectionStore`, holding **only** the `clipboard` slice. The clipboard
+  persists across page reloads and across same-origin tabs (cross-tab sync
+  via the `storage` event). Selection, ghost, axis-picker, and tool state
+  remain session-only. No migration is required because the clipboard key
+  is brand new — a missing entry simply means an empty clipboard.
 - **Desktop behavior:** mouse drag for marquee/lasso; `Shift` adds, `Ctrl`/`Cmd`
   subtracts; arrow keys nudge ghost cell-by-cell; keyboard shortcuts for ops
   (`V` select / `B` brush, `Delete`, `Ctrl/Cmd+C/X/V`, `Enter`, `Escape`).
@@ -68,13 +72,11 @@ extensions: move and delete.
 ## Non-Goals
 
 - Rotation by 90° / 180° (user explicitly chose mirror, not rotate).
-- Persisting clipboard across browser sessions or schemes.
-- Multi-clipboard / clipboard history.
+- Multi-clipboard / clipboard history (only one entry; new copy/cut overwrites).
 - Operating on `CellHighlight` row/column overlays — they remain stationary
   even when a selection covers them.
 - Selecting individual lines without a region (the hybrid model uses cells as
   the selection unit; lines are derived).
-- Cross-scheme paste.
 - Lasso point editing after release (lasso commits to a cell-set immediately
   on release).
 - Snapping ghost to grid landmarks beyond cell-boundary alignment.

@@ -244,11 +244,27 @@ into a session clipboard.
 - **AND** the lines are removed from the canvas in one undoable transaction
 - **AND** the selection is cleared
 
-#### Scenario: Clipboard persistence
+#### Scenario: Clipboard persistence across reloads
 
 - **WHEN** the user reloads the page
-- **THEN** the clipboard is empty (clipboard is session-only and not
-  persisted)
+- **THEN** the clipboard is restored from localStorage if a previous
+  copy or cut wrote to it during any earlier session
+
+#### Scenario: Clipboard sync across tabs
+
+- **WHEN** the user copies or cuts in one tab of the editor
+- **AND** another tab of the same origin has the editor open
+- **THEN** the second tab receives the new clipboard via the `storage`
+  event and reflects it in the UI (the Paste button appears or updates),
+  enabling cross-window paste of pattern fragments between two open
+  editor instances
+
+#### Scenario: Clipboard cleared in one tab
+
+- **WHEN** the clipboard storage entry is deleted in one tab (e.g. by
+  manual clearing or a future reset action)
+- **THEN** open tabs of the same origin receive the `storage` event with
+  `newValue === null` and clear their in-memory clipboard accordingly
 
 ### Requirement: Paste
 
@@ -259,8 +275,11 @@ that the user positions before commit.
 
 - **WHEN** the user presses `Ctrl+V` (`Cmd+V` on macOS) or clicks the Paste
   button and the clipboard is non-empty
-- **THEN** a paste-ghost containing the clipboard lines appears, offset by
-  (+1, +1) from the canvas origin or at the most recent cursor cell if known
+- **THEN** a paste-ghost containing the clipboard lines appears, positioned
+  with the following origin priority:
+  1. an explicit cursor cell, if one is supplied by the caller, OR
+  2. the top-left of the active selection's bbox, if a selection exists, OR
+  3. (1, 1) from the canvas origin as a fallback
 - **AND** the user can adjust the position via drag or arrow keys
   (or arrow buttons on touch)
 

@@ -120,10 +120,11 @@
       `useSelectionStore.setTool`. Lasso button is functional only after
       slice C — clicking it switches the mode but selection-lasso input
       is not yet wired. (Slice A)
-- [x] 5.2 (partial — slice B) Add `SelectionOps` section that becomes
-      visible when `selection || ghost` exists. Slice B: Move, Delete
-      (when selection); Confirm, Cancel (when ghost). Slices C/D/E add
-      Copy, Cut, Paste, Flip-H, Flip-V, Mirror.
+- [x] 5.2 (partial — slices B+D) `SelectionOps` is visible when
+      `selection || ghost || clipboard` exists. Slice B: Move, Delete
+      (when selection), Confirm, Cancel (when ghost). Slice D adds:
+      Копия, Вырезать (when selection), Вставить (when clipboard). The
+      Mirror / Flip-H / Flip-V buttons land in slice E.
 - [ ] 5.3 Update `HotkeysInfo.tsx` with new shortcuts: `V` /
       `B` (tool switch), `Delete`, `Ctrl/Cmd + C/X/V`, `Enter`
       (confirm ghost), `Escape` (cancel ghost), arrow keys (nudge
@@ -178,11 +179,12 @@
       `axisPicker.active`, mouse-move only updates overlay (no
       drawing); click on a grid line within proximity threshold
       calls `confirmAxis`. Manual verify.
-- [x] 7.6 (partial — slices A+B) `useCanvasShortcuts.ts` handles:
+- [x] 7.6 (partial — slices A+B+D) `useCanvasShortcuts.ts` handles:
       `Escape`, `Enter`, `Delete`/`Backspace`, arrow keys (with
-      auto-create move-ghost from selection). Tool-switch hotkeys
-      (V/B/L) and `Ctrl/Cmd+C/X/V` clipboard shortcuts arrive in
-      slices C and D respectively.
+      auto-create move-ghost from selection), `Ctrl/Cmd+Z` /
+      `Ctrl/Cmd+Shift+Z` / `Ctrl/Cmd+Y` (undo/redo with selection
+      clear), `Ctrl/Cmd+C` / `Ctrl/Cmd+X` / `Ctrl/Cmd+V` (clipboard).
+      Tool-switch hotkeys (V/B/L) arrive in slice C.
 - [ ] 7.7 Mirror the changes in `useCanvasTouchInteraction.ts`:
       branch on `tool` for single-finger paths, gate long-press =
       erase behind `tool === 'draw'`, route ghost commit/cancel

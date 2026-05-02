@@ -17,6 +17,9 @@ const desktopHotkeys = [
   { keys: '↑ ↓ ← →', description: 'Сдвинуть выделение / ghost на 1 клетку' },
   { keys: 'Enter', description: 'Применить перемещение / вставку' },
   { keys: 'Esc', description: 'Отменить перемещение / снять выделение' },
+  { keys: 'Ctrl/⌘ + C', description: 'Копировать выделенное' },
+  { keys: 'Ctrl/⌘ + X', description: 'Вырезать выделенное' },
+  { keys: 'Ctrl/⌘ + V', description: 'Вставить из буфера' },
 ];
 
 const mobileGestures = [
