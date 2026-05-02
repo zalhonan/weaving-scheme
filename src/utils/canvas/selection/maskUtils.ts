@@ -1,9 +1,12 @@
 import type { SelectionMask } from '../../../types';
 
-export const cellKey = (x: number, y: number): string => `${x}-${y}`;
+// `:` separator (not `-`) so negative coordinates round-trip cleanly through
+// `cellKey` ↔ `parseCellKey`. SelectionMask is in-memory only, so this format
+// has no persistence implications.
+export const cellKey = (x: number, y: number): string => `${x}:${y}`;
 
 export const parseCellKey = (key: string): { x: number; y: number } => {
-  const [xs, ys] = key.split('-');
+  const [xs, ys] = key.split(':');
   return { x: Number(xs), y: Number(ys) };
 };
 
@@ -94,6 +97,24 @@ export const translate = (mask: SelectionMask, dx: number, dy: number): Selectio
   for (const k of mask) {
     const { x, y } = parseCellKey(k);
     next.add(cellKey(x + dx, y + dy));
+  }
+  return next;
+};
+
+/**
+ * Drop cells that lie outside the canvas. Used at commit time so that a
+ * destMask dragged partly off-canvas doesn't leave the post-commit selection
+ * in an out-of-range state.
+ */
+export const clipMaskToCanvas = (
+  mask: SelectionMask,
+  width: number,
+  height: number,
+): SelectionMask => {
+  const next = new Set<string>();
+  for (const k of mask) {
+    const { x, y } = parseCellKey(k);
+    if (x >= 0 && x < width && y >= 0 && y < height) next.add(k);
   }
   return next;
 };

@@ -4,6 +4,7 @@ import {
   mirrorLines,
   normalizeToOrigin,
   linesBbox,
+  clipLinesToCanvas,
 } from '../../../../src/utils/canvas/selection/transforms';
 import type { Line, MirrorAxis } from '../../../../src/types';
 
@@ -111,6 +112,39 @@ describe('normalizeToOrigin', () => {
   });
   it('handles empty', () => {
     expect(normalizeToOrigin([])).toEqual([]);
+  });
+});
+
+describe('clipLinesToCanvas', () => {
+  it('keeps in-bounds lines (horizontal x ∈ [0,width-1], y ∈ [0,height])', () => {
+    const lines = [
+      L(0, 0, 'horizontal'),       // top-left edge: in
+      L(4, 5, 'horizontal'),       // bottom edge of last row: in
+      L(5, 0, 'horizontal'),       // x = width: out (must be < width)
+      L(-1, 0, 'horizontal'),      // negative x: out
+      L(0, -1, 'horizontal'),      // negative y: out
+      L(0, 6, 'horizontal'),       // y > height: out
+    ];
+    const r = clipLinesToCanvas(lines, 5, 5);
+    expect(r.length).toBe(2);
+  });
+  it('keeps in-bounds vertical lines (x ∈ [0,width], y ∈ [0,height-1])', () => {
+    const lines = [
+      L(0, 0, 'vertical'),         // left edge: in
+      L(5, 4, 'vertical'),         // right edge of last col: in
+      L(0, 5, 'vertical'),         // y = height: out
+      L(6, 0, 'vertical'),         // x > width: out
+    ];
+    const r = clipLinesToCanvas(lines, 5, 5);
+    expect(r.length).toBe(2);
+  });
+  it('returns empty when everything is off-canvas', () => {
+    const r = clipLinesToCanvas(
+      [L(100, 100, 'horizontal'), L(-50, -50, 'vertical')],
+      10,
+      10,
+    );
+    expect(r.length).toBe(0);
   });
 });
 

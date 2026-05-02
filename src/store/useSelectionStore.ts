@@ -3,7 +3,6 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type {
   ClipboardEntry,
   GhostState,
-  Line,
   MirrorAxis,
   RefineMode,
   SelectionMask,
@@ -12,6 +11,7 @@ import type {
 import { useCanvasStore } from './useCanvasStore';
 import {
   bbox,
+  clipMaskToCanvas,
   fromRect,
   mirrorMask,
   subtract,
@@ -20,6 +20,7 @@ import {
 } from '../utils/canvas/selection/maskUtils';
 import { getLinesInMask } from '../utils/canvas/selection/derivedLines';
 import {
+  clipLinesToCanvas,
   mirrorLines,
   normalizeToOrigin,
   translateLines,
@@ -80,32 +81,6 @@ const initialState: SelectionState = {
   clipboard: null,
   axisPicker: null,
   marqueePreview: null,
-};
-
-/**
- * Compute how far the ghost can be translated by (dx, dy) without any line
- * leaving the canvas. Returns the clamped delta. (Each line's allowed range
- * depends on its orientation: horizontal x ∈ [0, width-1], y ∈ [0, height];
- * vertical x ∈ [0, width], y ∈ [0, height-1].)
- */
-const clampGhostDelta = (
-  lines: Line[],
-  dx: number,
-  dy: number,
-  width: number,
-  height: number,
-): { dx: number; dy: number } => {
-  let cdx = dx;
-  let cdy = dy;
-  for (const line of lines) {
-    const xMax = line.orientation === 'horizontal' ? width - 1 : width;
-    const yMax = line.orientation === 'horizontal' ? height : height - 1;
-    if (line.x + cdx < 0) cdx = -line.x;
-    if (line.x + cdx > xMax) cdx = xMax - line.x;
-    if (line.y + cdy < 0) cdy = -line.y;
-    if (line.y + cdy > yMax) cdy = yMax - line.y;
-  }
-  return { dx: cdx, dy: cdy };
 };
 
 /**
@@ -255,14 +230,15 @@ export const useSelectionStore = create<SelectionStore>()(
   adjustGhost: (dx, dy) => {
     const { ghost } = get();
     if (ghost === null) return;
-    const { width, height } = useCanvasStore.getState();
-    const { dx: cdx, dy: cdy } = clampGhostDelta(ghost.lines, dx, dy, width, height);
-    if (cdx === 0 && cdy === 0) return;
+    if (dx === 0 && dy === 0) return;
+    // No clamping: the ghost may freely cross the canvas edge. The
+    // off-canvas remainder is dropped at commit time (see commitGhost),
+    // but during the drag the user sees the full floating layer move.
     set({
       ghost: {
         ...ghost,
-        lines: translateLines(ghost.lines, cdx, cdy),
-        destMask: translateMask(ghost.destMask, cdx, cdy),
+        lines: translateLines(ghost.lines, dx, dy),
+        destMask: translateMask(ghost.destMask, dx, dy),
       },
     });
   },
@@ -273,23 +249,31 @@ export const useSelectionStore = create<SelectionStore>()(
     const { ghost } = get();
     if (ghost === null) return;
     const canvas = useCanvasStore.getState();
+    const { width, height } = canvas;
+
+    // Clip the floating layer to the canvas. Off-canvas portions of the
+    // ghost are dropped — only what's visible lands. The clipboard (if
+    // this is a paste) is untouched, so the same fragment can be pasted
+    // again in full.
+    const linesToAdd = clipLinesToCanvas(ghost.lines, width, height);
+    const clippedDestMask = clipMaskToCanvas(ghost.destMask, width, height);
 
     if (ghost.kind === 'move') {
       const removed = ghost.sourceMask
         ? getLinesInMask(ghost.sourceMask, canvas.lines)
         : [];
-      canvas.applyMove(removed, ghost.lines);
+      canvas.applyMove(removed, linesToAdd);
     } else if (ghost.kind === 'paste') {
-      canvas.applyPaste(ghost.lines);
+      canvas.applyPaste(linesToAdd);
     } else {
       const removed = ghost.sourceMask
         ? getLinesInMask(ghost.sourceMask, canvas.lines)
         : [];
-      canvas.applyMirror(removed, ghost.lines);
+      canvas.applyMirror(removed, linesToAdd);
     }
     set({
       ghost: null,
-      selection: ghost.destMask.size === 0 ? null : new Set(ghost.destMask),
+      selection: clippedDestMask.size === 0 ? null : clippedDestMask,
     });
   },
 

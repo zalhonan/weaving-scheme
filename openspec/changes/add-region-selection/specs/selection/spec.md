@@ -375,8 +375,26 @@ it were "lifted" off the canvas.
 
 - **WHEN** a ghost is active
 - **AND** the user drags within the ghost bbox or presses an arrow key
-- **THEN** `ghost.lines` are translated by the delta in cells
-- **AND** the ghost bbox is clamped to remain within `[0, width] × [0, height]`
+- **THEN** `ghost.lines` and `ghost.destMask` are translated by the delta
+  in cells
+- **AND** the floating layer MAY extend past the canvas edge during the
+  drag — there is no clamping. The off-canvas portion is rendered clipped
+  to the grid area visually, and is dropped at commit time (see the
+  off-canvas commit scenario below)
+
+#### Scenario: Off-canvas portion dropped on commit
+
+- **WHEN** a ghost is committed while part of its floating layer lies
+  outside the canvas (`x < 0`, `x ≥ width` for cell coords; or analogous
+  ranges for line endpoints)
+- **THEN** the in-bounds portion is written to the canvas via the
+  appropriate `apply*` action
+- **AND** the off-canvas portion is silently dropped (it does NOT extend
+  the canvas; data outside the canvas is lost)
+- **AND** the post-commit selection equals the in-bounds portion of the
+  destination mask
+- **AND** the clipboard, if this was a paste, is **unchanged** — the full
+  fragment can be pasted again
 
 #### Scenario: Ghost commit triggers
 

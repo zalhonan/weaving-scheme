@@ -7,11 +7,18 @@ export interface OverlayRenderOptions {
   offsetX: number;
   offsetY: number;
   cellSize: number;
+  /** Grid dimensions in cells — used to clip overlay drawing to the
+   * scheme area so off-canvas ghost / ants don't bleed into row-number
+   * gutters or surrounding chrome. */
+  canvasWidth: number;
+  canvasHeight: number;
   /** Boundary segments of the committed selection (in grid coords). */
   selectionSegments: Segment[];
   /** Live drag preview, if any. */
   marqueePreview: MarqueePreview | null;
-  /** Ghost lines (already transformed); rendered at reduced opacity. */
+  /** Ghost lines (already transformed); rendered at full opacity, clipped
+   * to the grid area. Off-canvas portions are visually hidden but remain
+   * in the array — they are dropped at commit time. */
   ghostLines: Line[];
   /** Marching-ants animation phase, advanced ~0.5 px / frame. */
   dashOffset: number;
@@ -166,6 +173,8 @@ export function renderOverlay(
     offsetX,
     offsetY,
     cellSize,
+    canvasWidth,
+    canvasHeight,
     selectionSegments,
     marqueePreview,
     ghostLines,
@@ -185,9 +194,24 @@ export function renderOverlay(
 
   ctx.clearRect(0, 0, displayWidth, displayHeight);
 
+  // Clip everything to the grid area so off-canvas ghost / ants stay
+  // visually inside the scheme bounds even when dragged past the edge.
+  const numberArea = CANVAS_CONSTANTS.NUMBER_AREA_WIDTH;
+  const gridStartX = offsetX + numberArea;
+  const gridStartY = offsetY + numberArea;
+  const gridEndX = gridStartX + canvasWidth * cellSize;
+  const gridEndY = gridStartY + canvasHeight * cellSize;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(gridStartX, gridStartY, gridEndX - gridStartX, gridEndY - gridStartY);
+  ctx.clip();
+
   drawGhost(ctx, ghostLines, offsetX, offsetY, cellSize);
   drawAnts(ctx, selectionSegments, offsetX, offsetY, cellSize, dashOffset);
   if (marqueePreview) {
     drawMarquee(ctx, marqueePreview, offsetX, offsetY, cellSize, dashOffset);
   }
+
+  ctx.restore();
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { useSelectionStore, useViewportStore } from '../../store';
+import { useCanvasStore, useSelectionStore, useViewportStore } from '../../store';
 import { renderOverlay } from '../../utils/canvas/overlayRenderer';
 import { traceBoundary } from '../../utils/canvas/selection/marchingAnts';
 
@@ -24,6 +24,7 @@ export function useOverlayRenderer() {
 
     const { selection, marqueePreview, ghost } = useSelectionStore.getState();
     const { offsetX, offsetY, cellSize } = useViewportStore.getState();
+    const { width: canvasWidth, height: canvasHeight } = useCanvasStore.getState();
 
     // Ants follow the floating layer when a ghost is active; otherwise they
     // wrap the committed selection. The original selection mask is never
@@ -36,6 +37,8 @@ export function useOverlayRenderer() {
       offsetX,
       offsetY,
       cellSize,
+      canvasWidth,
+      canvasHeight,
       selectionSegments: segments,
       marqueePreview,
       ghostLines: ghost ? ghost.lines : [],

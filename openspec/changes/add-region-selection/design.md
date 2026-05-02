@@ -195,11 +195,30 @@ Consequences:
   `applyMirror`) records exactly one undo entry, just like before.
 - **Undo of a committed move** restores the pre-move state in one Ctrl+Z.
 
-### Out-of-bounds clamping
+### Off-canvas behavior — clip on commit, not clamp on adjust
 
-`adjustGhost` clamps so that after translation every ghost line still lies
-within `[0, width]` × `[0, height]`. Attempting to push past the edge is a
-no-op. (Resizing the canvas to fit pasted content is out of scope.)
+`adjustGhost` does **not** clamp. The user can freely drag a floating
+layer past the canvas edge (image-editor convention: positioning is
+unconstrained even when the result would partly fall off the page).
+
+Visual containment is achieved at the **render** layer: the overlay
+canvas applies a `ctx.clip()` rectangle equal to the grid area before
+drawing ghost lines and marching ants. Off-canvas portions are simply not
+painted, so they don't bleed into row-number gutters or surrounding
+chrome.
+
+Containment of canvas state is achieved at **commit** time:
+`commitGhost` calls `clipLinesToCanvas(ghost.lines, width, height)` and
+`clipMaskToCanvas(ghost.destMask, width, height)` before invoking the
+appropriate `apply*` action. Lines and cells that fell outside the canvas
+during the drag are dropped silently — the canvas does not auto-grow,
+and the in-bounds portion is what lands. The resulting selection is the
+clipped destMask.
+
+For paste, the **clipboard is never modified by these clips**: the full
+fragment lives in `clipboard.lines` (normalized to origin), so the same
+piece can be pasted again at a different position to recover any portion
+that was lost on a previous commit.
 
 ## Overlay canvas
 

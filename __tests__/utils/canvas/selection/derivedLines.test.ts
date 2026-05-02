@@ -61,8 +61,8 @@ describe('getLinesInMask', () => {
 
   it('handles disjoint mask (two cells far apart) correctly', () => {
     const mask = new Set<string>();
-    mask.add('0-0');
-    mask.add('5-5');
+    mask.add('0:0');
+    mask.add('5:5');
     const lines = makeLines([
       // edges of cell (0,0)
       { x: 0, y: 0, orientation: 'horizontal' },

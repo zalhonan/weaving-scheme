@@ -51,6 +51,26 @@ export const normalizeToOrigin = (lines: Line[]): Line[] => {
 };
 
 /**
+ * Drop lines that lie outside the canvas. Used at commit time when a ghost
+ * has been dragged partly off the edge: the visible portion lands; the
+ * off-canvas remainder is discarded.
+ *
+ * In-bounds rules (mirror `Line` semantics):
+ *   - Horizontal at (x, y): x ∈ [0, width-1], y ∈ [0, height]
+ *   - Vertical   at (x, y): x ∈ [0, width],   y ∈ [0, height-1]
+ */
+export const clipLinesToCanvas = (
+  lines: Line[],
+  width: number,
+  height: number,
+): Line[] =>
+  lines.filter((line) =>
+    line.orientation === 'horizontal'
+      ? line.x >= 0 && line.x < width && line.y >= 0 && line.y <= height
+      : line.x >= 0 && line.x <= width && line.y >= 0 && line.y < height,
+  );
+
+/**
  * Bbox of a line set in line-coordinate space (NOT cell space).
  * Returns null for empty input.
  */

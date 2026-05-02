@@ -11,6 +11,7 @@ import {
   bbox,
   translate,
   mirrorMask,
+  clipMaskToCanvas,
 } from '../../../../src/utils/canvas/selection/maskUtils';
 
 describe('maskUtils', () => {
@@ -141,6 +142,28 @@ describe('maskUtils', () => {
       const m = fromRect(0, 0, 1, 1);
       translate(m, 10, 20);
       expect(hasCell(m, 0, 0)).toBe(true);
+    });
+  });
+
+  describe('clipMaskToCanvas', () => {
+    it('keeps cells in [0,width-1] × [0,height-1]', () => {
+      const m = new Set<string>();
+      m.add(cellKey(0, 0));
+      m.add(cellKey(4, 4));
+      m.add(cellKey(5, 5));    // out: equals width/height
+      m.add(cellKey(-1, 0));   // out: negative
+      m.add(cellKey(0, -1));   // out: negative
+      m.add(cellKey(10, 10));  // out: way past
+      const r = clipMaskToCanvas(m, 5, 5);
+      expect(r.size).toBe(2);
+      expect(hasCell(r, 0, 0)).toBe(true);
+      expect(hasCell(r, 4, 4)).toBe(true);
+    });
+    it('returns empty for fully off-canvas mask', () => {
+      const m = new Set<string>();
+      m.add(cellKey(100, 100));
+      const r = clipMaskToCanvas(m, 5, 5);
+      expect(r.size).toBe(0);
     });
   });
 
