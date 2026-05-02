@@ -161,10 +161,11 @@
       to `SelectionOps`, visible when a selection exists and no
       ghost is active. Each button calls
       `useSelectionStore.beginRotateGhost(direction)`.
-- [ ] 5.3 Update `HotkeysInfo.tsx` with new shortcuts: `V` /
-      `B` (tool switch), `Delete`, `Ctrl/Cmd + C/X/V`, `Enter`
-      (confirm ghost), `Escape` (cancel ghost), arrow keys (nudge
-      ghost). Run `npm run lint`.
+- [x] 5.3 Hotkeys updated incrementally across slices A–G:
+      `Esc` (slice A), `Enter` / `Del` / arrows (slice B),
+      `Ctrl/⌘ + Z / Shift+Z / Y` (post-B fix), `Ctrl/⌘ + C / X / V`
+      (slice D), `B` / `V` / `L` tool switch (slice G). All listed
+      in `HotkeysInfo.tsx`. Implementation in `useCanvasShortcuts.ts`.
 - [x] 5.4 Update `Sidebar/UndoRedo.tsx` to call
       `useSelectionStore.getState().clearAll()` after any undo or
       redo. Same coupling added to keyboard `Ctrl/Cmd+Z` /

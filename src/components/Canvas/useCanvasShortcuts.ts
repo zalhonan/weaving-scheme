@@ -90,6 +90,24 @@ export function useCanvasShortcuts(): void {
         return;
       }
 
+      // Tool switch shortcuts (image-editor convention: B=brush, V=marquee, L=lasso).
+      // Only fire without modifier, so they don't collide with Ctrl+V etc.
+      if (!isMod && key === 'b') {
+        sel.setTool('draw');
+        e.preventDefault();
+        return;
+      }
+      if (!isMod && key === 'v') {
+        sel.setTool('select-rect');
+        e.preventDefault();
+        return;
+      }
+      if (!isMod && key === 'l') {
+        sel.setTool('select-lasso');
+        e.preventDefault();
+        return;
+      }
+
       if (e.key === 'Escape') {
         if (sel.ghost) {
           sel.cancelGhost();

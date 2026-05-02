@@ -20,6 +20,9 @@ const desktopHotkeys = [
   { keys: 'Ctrl/⌘ + C', description: 'Копировать выделенное' },
   { keys: 'Ctrl/⌘ + X', description: 'Вырезать выделенное' },
   { keys: 'Ctrl/⌘ + V', description: 'Вставить из буфера' },
+  { keys: 'B', description: 'Инструмент: Рисовать' },
+  { keys: 'V', description: 'Инструмент: Рамка' },
+  { keys: 'L', description: 'Инструмент: Лассо' },
 ];
 
 const mobileGestures = [
