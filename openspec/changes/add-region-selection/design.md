@@ -112,34 +112,61 @@ y=2           ──────┴──────   ← y=2 line below (1,1)
                                 of selection → IN selection
 ```
 
-## Floating ghost — universal mechanic for transforms
+## Floating ghost — composable transforms
 
-Every transform that produces "moved/changed lines elsewhere on canvas" goes
-through the same ghost lifecycle:
+Every transform — translate (move), flip H, flip V, mirror across an axis,
+rotate CW, rotate CCW — operates as a **composition** onto the same
+floating ghost, not as a one-shot ghost-creation. The ghost has only two
+flavors:
+
+- `kind: 'move'` — ghost has a `sourceMask`; on commit, source lines are
+  removed and ghost lines are added in one undoable transaction. Use this
+  for any source-bound operation, including move + any composition of
+  flips/mirror/rotate.
+- `kind: 'paste'` — ghost has no `sourceMask`; on commit, just adds.
+
+Lifecycle:
 
 ```
-                  ┌─────────────────┐
-  begin*Ghost  ──▶│  ghost active:  │
-                  │    lines        │
-                  │    sourceMask?  │
-                  └────────┬────────┘
-                           │
-              adjust(dx,dy)│  (drag, arrow keys, axis change)
-                           ▼
-                 ┌───────────────────┐
-                 │  ghost still       │
-                 │  active, updated   │
-                 └────────┬──────────┘
-                          │
-        ┌─────────────────┼──────────────────┐
-        │                                     │
+                ┌─────────────────────────────┐
+  beginMoveGhost│ or first transform call   │   (selection → ghost)
+       │        │                              │
+       ▼        ▼                              │
+  ┌────────────────────┐                       │
+  │ ghost active:       │◀──────────────────┐ │
+  │   kind: move|paste  │                    │ │
+  │   lines             │  applyFlipH        │ │
+  │   sourceMask?       │  applyFlipV        │ │
+  │   destMask          │  applyMirror(axis) │ │
+  └─────────┬───────────┘  applyRotate(dir)  │ │
+            │             adjustGhost(dx,dy) │ │
+            │                                  │ │
+            └──────────────────────────────────┘ │
+                          │                      │
+        ┌─────────────────┼──────────────────┐  │
+        │                                     │  │
     commitGhost()                       cancelGhost()
         │                                     │
         ▼                                     ▼
-   single undoable                       discard ghost,
-   apply* action on                      restore selection
-   useCanvasStore                        to pre-op state
+   one undoable                          discard ghost,
+   apply* action                         source reappears
+   (paste → applyPaste,                  (zero zundo entries)
+    move → applyMove)
 ```
+
+Each `apply*Transform` action:
+
+1. Lazily creates a ghost from the selection if none exists (move-kind,
+   identity transform — equivalent to calling `beginMoveGhost`).
+2. Computes the new `lines` and `destMask` by applying the requested
+   transform to the **current** ghost state.
+3. Writes the new ghost back via `set({ ghost: { ...ghost, lines, destMask } })`.
+
+Critically, `set` only modifies `useSelectionStore` — `useCanvasStore` is
+untouched, so the temporal history is unaffected by intermediate
+transforms. Only the final `commitGhost` writes to `useCanvasStore`,
+producing exactly one zundo entry regardless of how many transforms were
+composed.
 
 `adjustGhost(dx, dy)` translates `ghost.lines` by `(dx, dy)` cells. No
 separately-stored transform — every adjust mutates `lines` directly. Cost is
@@ -403,23 +430,26 @@ the canvas store unchanged until commit (render-time source hiding), an
 Each is one `set(...)` call so zundo records one undo step:
 
 ```ts
-applyMove(sourceMask: SelectionMask, ghostLines: Line[]): void
-// Removes lines belonging to sourceMask (inclusive); writes ghostLines.
+applyMove(linesToRemove: Line[], linesToAdd: Line[]): void
+// Atomic remove + add, preserving line colors. Used for ALL source-bound
+// commits — move, flip, mirror, rotate, or any composition of those. The
+// "Move" name reflects that lines move from one set of keys to another;
+// the actual transform that produced `linesToAdd` is the selection
+// store's concern.
 
-applyDelete(mask: SelectionMask): void
-// Removes lines belonging to mask (inclusive). No ghost involved.
+applyDelete(linesToRemove: Line[]): void
+// Atomic remove. Used for Delete and the source-side of Cut.
 
-applyPaste(ghostLines: Line[]): void
-// Writes ghostLines. No source removal.
-
-applyMirror(sourceMask: SelectionMask, ghostLines: Line[]): void
-// Same as applyMove — original removed, mirrored copy written. (Mirror
-// "replaces" the source per image-editor convention.)
+applyPaste(linesToAdd: Line[]): void
+// Atomic add (preserving line colors). No source removal.
 ```
 
-`applyDelete` is a single transaction even though a selection may cover
-hundreds of lines — the existing `removeMultipleLines` is the implementation
-target.
+There is intentionally no `applyMirror` or `applyRotate`. Mirror and
+rotate are transforms that compose onto a ghost in the selection store;
+when committed, the ghost goes through `applyMove` like any other
+source-bound transform. This keeps the canvas store unaware of which
+specific transform was applied — it just sees lines moving from one set
+of keys to another.
 
 ## Performance
 

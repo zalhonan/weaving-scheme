@@ -35,11 +35,13 @@ interface CanvasActions {
   // Selection-driven transforms. Each is one set() call so zundo records
   // exactly one undo step. Lines are passed pre-computed (with their own
   // colors preserved) — selection logic lives in useSelectionStore + utils.
+  // Selection-driven transforms. Each is one set() so zundo records one
+  // undo entry. `applyMove` covers any source-bound transform (move, flip,
+  // mirror, rotate, or composition); `applyPaste` adds without removal;
+  // `applyDelete` removes only.
   applyMove: (linesToRemove: Line[], linesToAdd: Line[]) => void;
   applyDelete: (linesToRemove: Line[]) => void;
   applyPaste: (linesToAdd: Line[]) => void;
-  applyMirror: (linesToRemove: Line[], linesToAdd: Line[]) => void;
-  applyRotate: (linesToRemove: Line[], linesToAdd: Line[]) => void;
 }
 
 type CanvasStore = CanvasState & CanvasActions;
@@ -385,32 +387,6 @@ export const useCanvasStore = create<CanvasStore>()(
         applyPaste: (linesToAdd) => {
           set((state) => {
             const newLines = new Map(state.lines);
-            for (const line of linesToAdd) {
-              newLines.set(getLineKey(line.x, line.y, line.orientation), line);
-            }
-            return { lines: newLines };
-          });
-        },
-
-        applyMirror: (linesToRemove, linesToAdd) => {
-          set((state) => {
-            const newLines = new Map(state.lines);
-            for (const line of linesToRemove) {
-              newLines.delete(getLineKey(line.x, line.y, line.orientation));
-            }
-            for (const line of linesToAdd) {
-              newLines.set(getLineKey(line.x, line.y, line.orientation), line);
-            }
-            return { lines: newLines };
-          });
-        },
-
-        applyRotate: (linesToRemove, linesToAdd) => {
-          set((state) => {
-            const newLines = new Map(state.lines);
-            for (const line of linesToRemove) {
-              newLines.delete(getLineKey(line.x, line.y, line.orientation));
-            }
             for (const line of linesToAdd) {
               newLines.set(getLineKey(line.x, line.y, line.orientation), line);
             }

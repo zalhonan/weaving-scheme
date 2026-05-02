@@ -60,8 +60,16 @@ interface SelectionActions {
 
   beginMoveGhost: () => void;
   beginPasteGhost: (originCell?: { x: number; y: number }) => void;
-  beginMirrorGhost: (axis: MirrorAxis) => void;
-  beginRotateGhost: (direction: RotationDirection) => void;
+  /**
+   * Compose a transform onto the active ghost. If no ghost exists, one is
+   * lazily created from the selection (move-kind, no transform yet) and
+   * then the transform is applied. Repeated calls keep composing —
+   * everything between begin/cancel/commit is a single undo step.
+   */
+  applyFlipHorizontal: () => void;
+  applyFlipVertical: () => void;
+  applyMirrorAcrossAxis: (axis: MirrorAxis) => void;
+  applyRotate: (direction: RotationDirection) => void;
   adjustGhost: (dx: number, dy: number) => void;
   cancelGhost: () => void;
   commitGhost: () => void;
@@ -215,39 +223,73 @@ export const useSelectionStore = create<SelectionStore>()(
     });
   },
 
-  beginMirrorGhost: (axis) => {
-    const { selection } = get();
-    if (selection === null) return;
-    const { lines: allLines } = useCanvasStore.getState();
-    const selectedLines = getLinesInMask(selection, allLines);
-    if (selectedLines.length === 0) return;
+  applyFlipHorizontal: () => {
+    if (!get().ghost) get().beginMoveGhost();
+    const ghost = get().ghost;
+    if (!ghost) return;
+    const b = bbox(ghost.destMask);
+    if (!b) return;
+    const axis: MirrorAxis = {
+      orientation: 'vertical',
+      x: b.minX + b.width / 2,
+    };
     set({
       ghost: {
-        kind: 'mirror',
-        lines: mirrorLines(selectedLines, axis),
-        sourceMask: new Set(selection),
-        destMask: mirrorMask(selection, axis),
+        ...ghost,
+        lines: mirrorLines(ghost.lines, axis),
+        destMask: mirrorMask(ghost.destMask, axis),
       },
       axisPicker: null,
     });
   },
 
-  beginRotateGhost: (direction) => {
-    const { selection } = get();
-    if (selection === null) return;
-    const b = bbox(selection);
+  applyFlipVertical: () => {
+    if (!get().ghost) get().beginMoveGhost();
+    const ghost = get().ghost;
+    if (!ghost) return;
+    const b = bbox(ghost.destMask);
+    if (!b) return;
+    const axis: MirrorAxis = {
+      orientation: 'horizontal',
+      y: b.minY + b.height / 2,
+    };
+    set({
+      ghost: {
+        ...ghost,
+        lines: mirrorLines(ghost.lines, axis),
+        destMask: mirrorMask(ghost.destMask, axis),
+      },
+      axisPicker: null,
+    });
+  },
+
+  applyMirrorAcrossAxis: (axis) => {
+    if (!get().ghost) get().beginMoveGhost();
+    const ghost = get().ghost;
+    if (!ghost) return;
+    set({
+      ghost: {
+        ...ghost,
+        lines: mirrorLines(ghost.lines, axis),
+        destMask: mirrorMask(ghost.destMask, axis),
+      },
+      axisPicker: null,
+    });
+  },
+
+  applyRotate: (direction) => {
+    if (!get().ghost) get().beginMoveGhost();
+    const ghost = get().ghost;
+    if (!ghost) return;
+    const b = bbox(ghost.destMask);
     if (!b) return;
     const cx = (b.minX + b.maxX + 1) / 2;
     const cy = (b.minY + b.maxY + 1) / 2;
-    const { lines: allLines } = useCanvasStore.getState();
-    const selectedLines = getLinesInMask(selection, allLines);
-    if (selectedLines.length === 0) return;
     set({
       ghost: {
-        kind: 'rotate',
-        lines: rotateLines(selectedLines, direction, cx, cy),
-        sourceMask: new Set(selection),
-        destMask: rotateMask(selection, direction, cx, cy),
+        ...ghost,
+        lines: rotateLines(ghost.lines, direction, cx, cy),
+        destMask: rotateMask(ghost.destMask, direction, cx, cy),
       },
       axisPicker: null,
     });
@@ -284,23 +326,17 @@ export const useSelectionStore = create<SelectionStore>()(
     const linesToAdd = clipLinesToCanvas(ghost.lines, width, height);
     const clippedDestMask = clipMaskToCanvas(ghost.destMask, width, height);
 
-    if (ghost.kind === 'move') {
+    if (ghost.kind === 'paste') {
+      canvas.applyPaste(linesToAdd);
+    } else {
+      // 'move' kind covers any source-bound transform — including any
+      // composition of move + flips + rotations + mirror. Single
+      // transaction → one zundo entry, regardless of how many transforms
+      // were composed.
       const removed = ghost.sourceMask
         ? getLinesInMask(ghost.sourceMask, canvas.lines)
         : [];
       canvas.applyMove(removed, linesToAdd);
-    } else if (ghost.kind === 'paste') {
-      canvas.applyPaste(linesToAdd);
-    } else if (ghost.kind === 'rotate') {
-      const removed = ghost.sourceMask
-        ? getLinesInMask(ghost.sourceMask, canvas.lines)
-        : [];
-      canvas.applyRotate(removed, linesToAdd);
-    } else {
-      const removed = ghost.sourceMask
-        ? getLinesInMask(ghost.sourceMask, canvas.lines)
-        : [];
-      canvas.applyMirror(removed, linesToAdd);
     }
     set({
       ghost: null,
@@ -373,7 +409,8 @@ export const useSelectionStore = create<SelectionStore>()(
     const { axisPicker } = get();
     if (axisPicker === null || !axisPicker.active) return;
     set({ axisPicker: null });
-    get().beginMirrorGhost(axis);
+    // Composes onto current ghost, or creates a new one from selection.
+    get().applyMirrorAcrossAxis(axis);
   },
 
   cancelAxisPicker: () => set({ axisPicker: null }),

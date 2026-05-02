@@ -62,12 +62,22 @@
       Run `npm run typecheck`.
 - [x] 2.9 Re-export `useSelectionStore` from `src/store/index.ts`.
       Run `npm run typecheck`.
-- [x] 2.10 Add `applyRotate(linesToRemove, linesToAdd)` to
-      `useCanvasStore` — same atomic shape as `applyMove` / `applyMirror`.
-- [x] 2.11 Add `beginRotateGhost(direction: RotationDirection)` to
-      `useSelectionStore`. Computes bbox center, calls
-      `rotateLines` / `rotateMask`, sets ghost with `kind: 'rotate'`.
-      `commitGhost` dispatches to `applyRotate` for that kind.
+- [x] 2.10 (superseded — see 2.12) Initial impl added `applyRotate` and
+      kept `applyMirror`. After the composable-transforms refactor those
+      are removed; only `applyMove` / `applyDelete` / `applyPaste` remain
+      in `useCanvasStore` actions for selection-driven transforms.
+- [x] 2.11 (superseded — see 2.12) `beginMirrorGhost` /
+      `beginRotateGhost` are gone. Mirror and rotate are now transforms
+      that compose onto an active ghost.
+- [x] 2.12 Composable-transforms refactor. Selection store exposes
+      `applyFlipHorizontal`, `applyFlipVertical`,
+      `applyMirrorAcrossAxis(axis)`, `applyRotate(direction)`. Each
+      lazily creates a ghost from the selection (move-kind) if none
+      exists, then transforms `ghost.lines` and `ghost.destMask` in
+      place. `commitGhost` simplifies to two cases (paste → applyPaste;
+      anything else → applyMove). `GhostKind` shrinks to `'move'`/`'paste'`.
+      `confirmAxis` calls `applyMirrorAcrossAxis`. UI keeps Flip/Mirror/
+      Rotate buttons visible during ghost.
 
 ## 3. Utils
 

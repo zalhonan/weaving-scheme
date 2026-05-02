@@ -304,44 +304,39 @@ that the user positions before commit.
 
 The system SHALL support mirroring the selected pattern across an axis,
 either chosen interactively (any horizontal or vertical grid line) or via
-quick presets that mirror around the selection bbox center.
+quick presets that mirror around the bbox center. Mirror is implemented
+as a transform that **composes onto the active ghost** — see
+"Composable Transforms".
 
 #### Scenario: Quick Flip-H
 
-- **WHEN** the user invokes "Flip H" while a selection is active
-- **THEN** a mirror-ghost is created with the axis at the bbox vertical
-  center (`bbox.minX + bbox.width / 2`)
-- **AND** the ghost is adjustable like any other ghost
+- **WHEN** the user invokes "Flip H"
+- **AND** a selection or ghost is available
+- **THEN** the lines and destMask of the active ghost are mirrored across
+  the vertical axis at the ghost's bbox horizontal center
+  (`bbox.minX + bbox.width / 2`)
+- **AND** if no ghost existed, one is created from the selection first
+  (move-kind, no source removal yet) and the mirror is applied to it
 
 #### Scenario: Quick Flip-V
 
-- **WHEN** the user invokes "Flip V" while a selection is active
-- **THEN** a mirror-ghost is created with the axis at the bbox horizontal
-  center (`bbox.minY + bbox.height / 2`)
+- **WHEN** the user invokes "Flip V"
+- **AND** a selection or ghost is available
+- **THEN** the lines and destMask of the active ghost are mirrored across
+  the horizontal axis at the ghost's bbox vertical center
+  (`bbox.minY + bbox.height / 2`)
 
 #### Scenario: Mirror with custom axis
 
-- **WHEN** the user invokes "Mirror" while a selection is active
-- **THEN** the system enters axis-picker mode (`axisPicker.active = true`)
-- **AND** the cursor changes to crosshair
-- **AND** pointer-move highlights the nearest grid line within proximity
-  threshold on the overlay canvas
-
-#### Scenario: Set axis
-
-- **WHEN** the user clicks a horizontal or vertical grid line during
-  axis-picker mode
-- **THEN** the axis is set
-- **AND** axis-picker mode exits
-- **AND** a mirror-ghost is created using the chosen axis
-
-#### Scenario: Mirror commit
-
-- **WHEN** the user confirms a mirror-ghost
-- **THEN** the original lines belonging to the source mask are removed
-- **AND** the mirrored lines are written
-- **AND** the operation is one undoable transaction
-- **AND** the selection mask becomes the mirrored cell set
+- **WHEN** the user invokes "Mirror"
+- **AND** a selection or ghost is available
+- **THEN** the system enters axis-picker mode
+- **AND** pointer-move highlights the nearest grid line as the candidate
+  axis on the overlay
+- **WHEN** the user clicks a horizontal or vertical grid line
+- **THEN** axis-picker mode exits
+- **AND** the lines and destMask of the active ghost are mirrored across
+  the chosen axis (lazily creating the ghost from selection if needed)
 
 #### Scenario: Mirror preserves orientation
 
@@ -352,41 +347,41 @@ quick presets that mirror around the selection bbox center.
 
 ### Requirement: Rotate
 
-The system SHALL rotate the selected pattern by 90° clockwise or
-counter-clockwise around the bbox center, presenting the result as a
-floating layer that the user can adjust before commit. Rotation swaps
-line orientation (horizontal lines become vertical and vice versa)
-and swaps the bbox width/height.
+The system SHALL rotate the active ghost (or the selection, lazily
+creating a ghost) by 90° clockwise or counter-clockwise around the
+ghost's current bbox center. Rotation swaps line orientation
+(horizontal ↔ vertical) and swaps the bbox width/height. Like flips
+and mirrors, rotation **composes onto the active ghost** — see
+"Composable Transforms".
 
 #### Scenario: Rotate 90° clockwise
 
-- **WHEN** the user invokes "Повернуть ↻" (Rotate CW) while a selection
-  is active
-- **THEN** a rotate-ghost is created with each line transformed by the
-  90° CW rotation around the bbox center: horizontal `(x, y)` → vertical
-  `(cx + cy − y, x + cy − cx)`; vertical `(x, y)` → horizontal
+- **WHEN** the user invokes "Повернуть ↻" (Rotate CW)
+- **AND** a selection or ghost is available
+- **THEN** the ghost's lines and destMask are transformed by the 90° CW
+  rotation around the current bbox center: horizontal `(x, y)` →
+  vertical `(cx + cy − y, x + cy − cx)`; vertical `(x, y)` → horizontal
   `(cx + cy − y − 1, x + cy − cx)` (where `(cx, cy)` is the bbox center)
-- **AND** the rotated bbox dimensions are swapped relative to the source
+- **AND** if no ghost existed, one is created from the selection first
 
 #### Scenario: Rotate 90° counter-clockwise
 
-- **WHEN** the user invokes "Повернуть ↺" (Rotate CCW) while a selection
-  is active
-- **THEN** a rotate-ghost is created using the inverse transformation:
-  horizontal `(x, y)` → vertical `(cx + y − cy, cy + cx − x − 1)`;
-  vertical `(x, y)` → horizontal `(cx + y − cy, cy + cx − x)`
+- **WHEN** the user invokes "Повернуть ↺" (Rotate CCW)
+- **AND** a selection or ghost is available
+- **THEN** the inverse transformation is applied: horizontal `(x, y)` →
+  vertical `(cx + y − cy, cy + cx − x − 1)`; vertical `(x, y)` →
+  horizontal `(cx + y − cy, cy + cx − x)`
 
-#### Scenario: Four CW rotations restore the original
+#### Scenario: Four CW rotations are an identity
 
-- **GIVEN** a selection
-- **WHEN** the user applies Rotate CW four times in succession (each
-  followed by commit)
+- **GIVEN** an active ghost (or a selection)
+- **WHEN** the user applies Rotate CW four times in a row, before commit
 - **THEN** the resulting line set is geometrically identical to the
-  original (modulo any cells lost off-canvas during intermediate steps)
+  starting state
 
 #### Scenario: Non-square bbox rotation
 
-- **WHEN** the selection bbox is non-square (width ≠ height)
+- **WHEN** the bbox width ≠ height
 - **THEN** the rotation pivot is the bbox center, which may be a
   half-integer coordinate
 - **AND** rotated cell and line coordinates are rounded to the nearest
@@ -394,17 +389,50 @@ and swaps the bbox width/height.
 - **AND** the rotated piece may shift relative to the source; off-canvas
   portions are dropped on commit per the standard clip-on-commit rule
 
-#### Scenario: Rotate behaves as a floating layer
+### Requirement: Composable Transforms
 
-- **WHEN** a rotate-ghost is active
-- **THEN** the source lines are hidden on the static canvas (image-editor
-  floating-layer model)
-- **AND** the rotated lines render at full opacity on the overlay with
-  marching ants around the rotated mask
-- **AND** the user can drag the ghost or use arrow keys to translate it
-  before commit, exactly like a move-ghost
-- **AND** `Enter` commits via `applyRotate` (one undoable transaction);
-  `Escape` cancels and restores the source
+Move, flip H, flip V, mirror across axis, rotate CW, and rotate CCW SHALL
+all operate as transforms that compose onto the **same** active ghost
+without intermediate commits. The user can interleave drag/arrow-key
+translation with any of these transform operations as many times as they
+want, and the entire composition SHALL be committed as **one** entry in
+the temporal history.
+
+#### Scenario: Compose multiple transforms before commit
+
+- **GIVEN** an active selection (or active ghost)
+- **WHEN** the user performs in sequence: drag the ghost left two cells,
+  then Rotate CW, then Rotate CW, then Flip H, then arrow-key down one cell
+- **THEN** each step composes onto the same ghost (the source lines remain
+  hidden on the static canvas; the ghost.lines reflect the cumulative
+  result; ants follow the cumulative destMask)
+- **AND** Confirm (Enter / button / click outside) commits the cumulative
+  result as one zundo entry — `Ctrl+Z` reverses the entire composition
+
+#### Scenario: Cancel composition
+
+- **WHEN** the user has composed any number of transforms onto a ghost
+- **AND** presses Escape (or clicks Cancel)
+- **THEN** the entire composition is discarded — the source lines reappear
+  unchanged, no zundo entry is added
+
+#### Scenario: Transform buttons remain available during ghost
+
+- **WHEN** a ghost is active
+- **THEN** the Flip H, Flip V, Mirror (axis), Rotate CCW, Rotate CW
+  controls remain visible AND functional in the sidebar
+- **AND** the Confirm and Cancel controls also appear, alongside (not
+  replacing) the transform controls
+- **AND** Move, Delete, Copy, Cut, and Paste controls hide while the ghost
+  is active (they are not composable transforms)
+
+#### Scenario: First transform from selection lazily creates the ghost
+
+- **GIVEN** an active selection but no ghost yet
+- **WHEN** the user clicks Flip H, Flip V, Mirror, Rotate CW, or Rotate
+  CCW
+- **THEN** a ghost is created from the selection (move-kind, source
+  hidden) AND the chosen transform is applied to it in the same operation
 
 ### Requirement: Floating Layer Mechanic
 

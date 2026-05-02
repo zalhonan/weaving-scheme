@@ -1,7 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { useCanvasStore, useSelectionStore } from '../../store';
 import { getLinesInMask } from '../../utils/canvas/selection/derivedLines';
-import { bbox } from '../../utils/canvas/selection/maskUtils';
 import styles from './Sidebar.module.css';
 
 export const SelectionOps: React.FC = () => {
@@ -42,36 +41,13 @@ export const SelectionOps: React.FC = () => {
     sel.clearSelection();
   };
 
-  const onFlipH = () => {
-    const sel = useSelectionStore.getState();
-    if (!sel.selection) return;
-    const b = bbox(sel.selection);
-    if (!b) return;
-    sel.beginMirrorGhost({
-      orientation: 'vertical',
-      x: b.minX + b.width / 2,
-    });
-  };
-
-  const onFlipV = () => {
-    const sel = useSelectionStore.getState();
-    if (!sel.selection) return;
-    const b = bbox(sel.selection);
-    if (!b) return;
-    sel.beginMirrorGhost({
-      orientation: 'horizontal',
-      y: b.minY + b.height / 2,
-    });
-  };
-
+  const onFlipH = () => useSelectionStore.getState().applyFlipHorizontal();
+  const onFlipV = () => useSelectionStore.getState().applyFlipVertical();
   const onMirror = () => useSelectionStore.getState().beginAxisPicker();
+  const onRotateCW = () => useSelectionStore.getState().applyRotate('cw');
+  const onRotateCCW = () => useSelectionStore.getState().applyRotate('ccw');
 
-  const onRotateCW = () =>
-    useSelectionStore.getState().beginRotateGhost('cw');
-  const onRotateCCW = () =>
-    useSelectionStore.getState().beginRotateGhost('ccw');
-
-  // Axis picker mode: show instruction + cancel only.
+  // Axis picker: dedicated state — only instruction + cancel.
   if (axisPicker?.active) {
     return (
       <div className={styles.section}>
@@ -92,11 +68,18 @@ export const SelectionOps: React.FC = () => {
     );
   }
 
-  // Ghost active: confirm/cancel only.
-  if (ghost) {
-    return (
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Выделение</h3>
+  // Whether the transform-row buttons should be enabled. They compose onto
+  // the active ghost or, if no ghost yet, lazily create one from selection.
+  const canTransform = Boolean(selection || ghost);
+  const showSelectionOnlyOps = Boolean(selection && !ghost);
+
+  return (
+    <div className={styles.section}>
+      <h3 className={styles.sectionTitle}>Выделение</h3>
+
+      {/* Confirm / Cancel — visible while a ghost is composing. Other
+          transform buttons stay enabled so the user can compose more. */}
+      {ghost && (
         <div className={styles.undoRedoButtons}>
           <button
             className={styles.undoRedoButton}
@@ -113,34 +96,29 @@ export const SelectionOps: React.FC = () => {
             ✗ Отменить
           </button>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.section}>
-      <h3 className={styles.sectionTitle}>Выделение</h3>
-      {selection && (
-        <div className={styles.undoRedoButtons}>
-          <button
-            className={styles.undoRedoButton}
-            onClick={onMove}
-            title="Переместить (drag в выделении или стрелки)"
-          >
-            Двигать
-          </button>
-          <button
-            className={styles.undoRedoButton}
-            onClick={onDelete}
-            title="Удалить (Del)"
-          >
-            Удалить
-          </button>
-        </div>
       )}
-      <div className={styles.undoRedoButtons}>
-        {selection && (
-          <>
+
+      {/* Source-only ops: Move/Delete + Copy/Cut. Hidden during ghost
+          (they don't compose; user must commit/cancel first). */}
+      {showSelectionOnlyOps && (
+        <>
+          <div className={styles.undoRedoButtons}>
+            <button
+              className={styles.undoRedoButton}
+              onClick={onMove}
+              title="Поднять выделение в плавающий слой (или drag/стрелки)"
+            >
+              Двигать
+            </button>
+            <button
+              className={styles.undoRedoButton}
+              onClick={onDelete}
+              title="Удалить (Del)"
+            >
+              Удалить
+            </button>
+          </div>
+          <div className={styles.undoRedoButtons}>
             <button
               className={styles.undoRedoButton}
               onClick={onCopy}
@@ -155,9 +133,22 @@ export const SelectionOps: React.FC = () => {
             >
               Вырезать
             </button>
-          </>
-        )}
-        {clipboard && (
+            {clipboard && (
+              <button
+                className={styles.undoRedoButton}
+                onClick={onPaste}
+                title="Вставить (Ctrl/⌘+V)"
+              >
+                Вставить
+              </button>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Paste-only when no selection / no ghost but clipboard exists. */}
+      {!selection && !ghost && clipboard && (
+        <div className={styles.undoRedoButtons}>
           <button
             className={styles.undoRedoButton}
             onClick={onPaste}
@@ -165,22 +156,26 @@ export const SelectionOps: React.FC = () => {
           >
             Вставить
           </button>
-        )}
-      </div>
-      {selection && (
+        </div>
+      )}
+
+      {/* Transforms: visible whenever transformable content exists, INCLUDING
+          while a ghost is composing — that's the whole point of this layout
+          (compose flips + rotations + mirrors before committing). */}
+      {canTransform && (
         <>
           <div className={styles.undoRedoButtons}>
             <button
               className={styles.undoRedoButton}
               onClick={onFlipH}
-              title="Отразить горизонтально (вокруг центра выделения)"
+              title="Отразить горизонтально (вокруг центра выделения / ghost'а)"
             >
               ⇄ Flip H
             </button>
             <button
               className={styles.undoRedoButton}
               onClick={onFlipV}
-              title="Отразить вертикально (вокруг центра выделения)"
+              title="Отразить вертикально (вокруг центра выделения / ghost'а)"
             >
               ⇅ Flip V
             </button>

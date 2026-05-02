@@ -32,9 +32,16 @@ export type MirrorAxis =
   | { orientation: 'vertical'; x: number };
 
 /**
- * Which transform produced the active ghost.
+ * Two ghost flavors. Note: individual transforms (flip, mirror, rotate)
+ * are NOT separate kinds — they compose onto an existing ghost in place.
+ *
+ * - `'move'`: ghost has a `sourceMask`; on commit the source lines are
+ *   removed and the ghost lines are added in one undoable transaction.
+ *   Move, mirror, rotate, and any composition of those use this kind.
+ * - `'paste'`: ghost has no `sourceMask`; on commit the lines are simply
+ *   added (no removal).
  */
-export type GhostKind = 'move' | 'paste' | 'mirror' | 'rotate';
+export type GhostKind = 'move' | 'paste';
 
 /**
  * 90° rotation direction in screen coordinates (y-down).
