@@ -1,5 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
-import { useCanvasStore, useViewportStore, useUIStore } from '../../store';
+import {
+  useCanvasStore,
+  useViewportStore,
+  useUIStore,
+  useSelectionStore,
+} from '../../store';
 import { useTemporalStore } from '../../store/useCanvasStore';
 import { hitTest, HitTestResult } from '../../utils/canvas/hitTest';
 import { screenToGrid } from '../../utils/canvas/coordinates';
@@ -8,7 +13,32 @@ import {
   getFullColumnLines,
 } from '../../utils/canvas/advancedDrawing';
 import { floodFill } from '../../utils/canvas/floodFill';
+import { bbox, fromRect } from '../../utils/canvas/selection/maskUtils';
+import {
+  appendPoint,
+  cellsInPolygon,
+  type Point,
+} from '../../utils/canvas/selection/lasso';
 import { isEraser } from '../../constants/colors';
+import type { MirrorAxis } from '../../types';
+
+const nearestAxisTouch = (
+  gridX: number,
+  gridY: number,
+  width: number,
+  height: number,
+): MirrorAxis | null => {
+  if (gridX < -1 || gridX > width + 1 || gridY < -1 || gridY > height + 1) {
+    return null;
+  }
+  const ny = Math.max(0, Math.min(height, Math.round(gridY)));
+  const nx = Math.max(0, Math.min(width, Math.round(gridX)));
+  const distH = Math.abs(gridY - ny);
+  const distV = Math.abs(gridX - nx);
+  return distH < distV
+    ? { orientation: 'horizontal', y: ny }
+    : { orientation: 'vertical', x: nx };
+};
 import {
   GestureState,
   createInitialGestureState,
@@ -63,6 +93,11 @@ export function useCanvasTouchInteraction(
   const accumulatedDelta = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
   const lastTouchPos = useRef<{ x: number; y: number } | null>(null);
   const startTouchPos = useRef<{ x: number; y: number } | null>(null);
+
+  // Selection-mode touch refs
+  const marqueeAnchorTouch = useRef<{ x: number; y: number } | null>(null);
+  const lassoPointsTouch = useRef<Point[] | null>(null);
+  const ghostDragLastCellTouch = useRef<{ x: number; y: number } | null>(null);
 
   // Multi-touch tracking for undo/redo gestures
   const multiTapStartTime = useRef<number | null>(null);
@@ -160,6 +195,84 @@ export function useCanvasTouchInteraction(
       const touch = touches[0];
       startTouchPos.current = { x: touch.x, y: touch.y };
       lastTouchPos.current = { x: touch.x, y: touch.y };
+
+      // Selection tools take priority — bypass pending/drawing/erasing flow.
+      const sel = useSelectionStore.getState();
+      if (sel.tool === 'select-rect' || sel.tool === 'select-lasso') {
+        const { gridX, gridY } = screenToGrid(touch.x, touch.y, offsetX, offsetY, cellSize);
+        const cellX = Math.floor(gridX);
+        const cellY = Math.floor(gridY);
+        const inBounds =
+          cellX >= 0 && cellX < width && cellY >= 0 && cellY < height;
+
+        // Axis picker active: tap confirms axis (or cancels if outside).
+        if (sel.axisPicker?.active) {
+          const axis = nearestAxisTouch(gridX, gridY, width, height);
+          if (axis) sel.confirmAxis(axis);
+          gestureState.current.mode = 'selecting';
+          setTouchMode('drawing');
+          return;
+        }
+
+        // Ghost active: tap inside ghost bbox → drag the ghost. Tap outside
+        // does NOT auto-commit on touch (per spec — explicit Confirm).
+        if (sel.ghost) {
+          const gb = bbox(sel.ghost.destMask);
+          const insideGhost =
+            gb !== null &&
+            cellX >= gb.minX &&
+            cellX <= gb.maxX &&
+            cellY >= gb.minY &&
+            cellY <= gb.maxY;
+          if (insideGhost) {
+            ghostDragLastCellTouch.current = { x: cellX, y: cellY };
+            gestureState.current.mode = 'selecting';
+            setTouchMode('drawing');
+          }
+          return;
+        }
+
+        // Selection exists and tap inside its bbox → lazy move-ghost drag.
+        if (sel.selection && inBounds) {
+          const sb = bbox(sel.selection);
+          const insideSelection =
+            sb !== null &&
+            cellX >= sb.minX &&
+            cellX <= sb.maxX &&
+            cellY >= sb.minY &&
+            cellY <= sb.maxY;
+          if (insideSelection) {
+            sel.beginMoveGhost();
+            if (useSelectionStore.getState().ghost) {
+              ghostDragLastCellTouch.current = { x: cellX, y: cellY };
+              gestureState.current.mode = 'selecting';
+              setTouchMode('drawing');
+              return;
+            }
+          }
+        }
+
+        // Otherwise: start a fresh marquee (rect) or lasso.
+        if (!inBounds) return;
+        if (sel.tool === 'select-rect') {
+          marqueeAnchorTouch.current = { x: cellX, y: cellY };
+          sel.setMarqueePreview({
+            kind: 'rect',
+            rect: { x0: cellX, y0: cellY, x1: cellX, y1: cellY },
+          });
+        } else {
+          lassoPointsTouch.current = [{ x: gridX, y: gridY }];
+          sel.setMarqueePreview({
+            kind: 'lasso',
+            lasso: [{ x: gridX, y: gridY }],
+          });
+        }
+        gestureState.current.mode = 'selecting';
+        gestureState.current.touches = touches;
+        gestureState.current.startTimestamp = Date.now();
+        setTouchMode('drawing');
+        return;
+      }
 
       gestureState.current.mode = 'pending';
       gestureState.current.touches = touches;
@@ -332,6 +445,70 @@ export function useCanvasTouchInteraction(
         return;
       }
 
+      // Selection-mode single-finger drag.
+      if (touchCount === 1 && gestureState.current.mode === 'selecting') {
+        const touch = touches[0];
+        const { gridX, gridY } = screenToGrid(
+          touch.x,
+          touch.y,
+          offsetX,
+          offsetY,
+          cellSize,
+        );
+        const sel = useSelectionStore.getState();
+
+        // Axis picker hover: track candidate axis as the finger moves.
+        if (sel.axisPicker?.active) {
+          sel.setAxisCandidate(nearestAxisTouch(gridX, gridY, width, height));
+          return;
+        }
+
+        // Ghost drag: incremental adjustGhost deltas.
+        if (ghostDragLastCellTouch.current) {
+          const cellX = Math.floor(gridX);
+          const cellY = Math.floor(gridY);
+          const dx = cellX - ghostDragLastCellTouch.current.x;
+          const dy = cellY - ghostDragLastCellTouch.current.y;
+          if (dx !== 0 || dy !== 0) {
+            sel.adjustGhost(dx, dy);
+            ghostDragLastCellTouch.current = { x: cellX, y: cellY };
+          }
+          return;
+        }
+
+        // Marquee drag: update preview rect.
+        if (marqueeAnchorTouch.current) {
+          const cellX = Math.max(0, Math.min(width - 1, Math.floor(gridX)));
+          const cellY = Math.max(0, Math.min(height - 1, Math.floor(gridY)));
+          sel.setMarqueePreview({
+            kind: 'rect',
+            rect: {
+              x0: marqueeAnchorTouch.current.x,
+              y0: marqueeAnchorTouch.current.y,
+              x1: cellX,
+              y1: cellY,
+            },
+          });
+          return;
+        }
+
+        // Lasso drag: append point if min-distance away.
+        if (lassoPointsTouch.current) {
+          const minDistGrid = 5 / cellSize;
+          const next = appendPoint(
+            lassoPointsTouch.current,
+            { x: gridX, y: gridY },
+            minDistGrid,
+          );
+          if (next !== lassoPointsTouch.current) {
+            lassoPointsTouch.current = next;
+            sel.setMarqueePreview({ kind: 'lasso', lasso: next });
+          }
+          return;
+        }
+        return;
+      }
+
       // Single touch drawing/erasing
       if (
         touchCount === 1 &&
@@ -484,6 +661,30 @@ export function useCanvasTouchInteraction(
 
       const remainingTouches = touchListToPoints(e.touches, rect);
       const now = Date.now();
+
+      // Selection-mode lift: commit marquee/lasso, but NEVER auto-commit a
+      // ghost on touch — explicit Confirm tap is required (see GhostActionBar).
+      if (gestureState.current.mode === 'selecting' && remainingTouches.length === 0) {
+        const sel = useSelectionStore.getState();
+        if (marqueeAnchorTouch.current || lassoPointsTouch.current) {
+          const preview = sel.marqueePreview;
+          if (preview?.kind === 'rect' && preview.rect) {
+            const { x0, y0, x1, y1 } = preview.rect;
+            sel.setSelection(fromRect(x0, y0, x1, y1));
+          } else if (preview?.kind === 'lasso' && preview.lasso) {
+            sel.setSelection(cellsInPolygon(preview.lasso, width, height));
+          }
+          sel.setMarqueePreview(null);
+        }
+        marqueeAnchorTouch.current = null;
+        lassoPointsTouch.current = null;
+        ghostDragLastCellTouch.current = null;
+        gestureState.current.mode = 'none';
+        gestureState.current.touches = [];
+        setTouchMode('none');
+        accumulatedDelta.current = { dx: 0, dy: 0 };
+        return;
+      }
 
       // Check for single-finger double-tap (flood fill)
       if (

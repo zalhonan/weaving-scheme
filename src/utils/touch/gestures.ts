@@ -11,7 +11,14 @@ export interface TouchPoint {
 }
 
 export interface GestureState {
-  mode: 'none' | 'pending' | 'drawing' | 'erasing' | 'panning' | 'zooming';
+  mode:
+    | 'none'
+    | 'pending'
+    | 'drawing'
+    | 'erasing'
+    | 'panning'
+    | 'zooming'
+    | 'selecting';
   touches: TouchPoint[];
   initialDistance: number | null;
   initialMidpoint: { x: number; y: number } | null;

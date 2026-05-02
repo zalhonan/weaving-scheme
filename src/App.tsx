@@ -2,7 +2,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { Canvas } from './components/Canvas';
 import { Sidebar } from './components/Sidebar';
 import { ToastContainer } from './components/ui';
-import { MobileToolbar, GestureHints } from './components/Mobile';
+import { MobileToolbar, GestureHints, GhostActionBar } from './components/Mobile';
 import './App.css';
 
 export const App: React.FC = () => {
@@ -18,6 +18,7 @@ export const App: React.FC = () => {
       {/* Mobile-only components */}
       <MobileToolbar />
       <GestureHints />
+      <GhostActionBar />
     </div>
   );
 };

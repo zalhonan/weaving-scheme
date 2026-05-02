@@ -45,6 +45,21 @@ const GESTURES: GestureItem[] = [
     icon: '🖐️',
     description: 'Повторить действие',
   },
+  {
+    gesture: 'Рамка / Лассо',
+    icon: '✂️',
+    description: 'Переключи в сайдбаре, потом веди пальцем — выделение',
+  },
+  {
+    gesture: 'Касание в выделении',
+    icon: '✋',
+    description: 'Поднять выделение в плавающий слой',
+  },
+  {
+    gesture: 'Тап «Применить» / «Отменить»',
+    icon: '✓✗',
+    description: 'Применить или отменить перемещение / поворот / зеркало',
+  },
 ];
 
 export const GestureHints: React.FC = () => {

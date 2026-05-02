@@ -174,22 +174,23 @@
 
 ## 6. Components — Mobile
 
-- [ ] 6.1 Add a tool toggle in `MobileToolbar.tsx` (Draw / Rect /
-      Lasso). Run `npm run typecheck`.
-- [ ] 6.2 Add a tri-state refinement toggle
-      (`[Replace | Add | Subtract]`) visible only while a select
-      tool is active. Wired to `useSelectionStore.setRefineMode`.
-      Run `npm run typecheck`.
-- [ ] 6.3 Add an operations sub-toolbar visible when
-      `selection !== null`: Move, Delete, Copy, Cut, Paste, Flip H,
-      Flip V, Mirror. Run `npm run typecheck`.
-- [ ] 6.4 Add a ghost-control sub-toolbar visible when
-      `ghost !== null`: arrow-nudge buttons (↑ ↓ ← →) and
-      Confirm / Cancel. Run `npm run typecheck`.
-- [ ] 6.5 Update `GestureHints.tsx` with new gesture vocabulary:
-      single-finger drag in select tool = marquee, drag inside
-      selection bbox = move, long-press disabled in select tool.
-      Run `npm run lint`.
+- [ ] 6.1 (deferred) Tool toggle in floating `MobileToolbar`. Not
+      strictly necessary — sidebar `SelectionTool` already provides it
+      and is reachable via the ☰ button on mobile. Could promote in a
+      follow-up.
+- [x] 6.2 Tri-state refinement toggle
+      (`[Заменить | + Добавить | − Убрать]`) added to `SelectionTool`
+      — visible whenever a select tool is active. Works for desktop
+      too (alternative to Shift/Ctrl).
+- [ ] 6.3 (deferred) Operations sub-toolbar in floating
+      `MobileToolbar`. Sidebar `SelectionOps` covers all ops; mobile
+      user opens ☰ to access. Promote to floating in a follow-up.
+- [x] 6.4 Floating `GhostActionBar` (mobile-only via `pointer: coarse`
+      / `<= 768px`) with Confirm / Cancel — within thumb reach so the
+      user doesn't have to open the sidebar after each touch ghost.
+      In axis-picker mode shows hint + Cancel. Arrow-nudge buttons
+      deferred (drag works fine on touch).
+- [x] 6.5 Update `GestureHints.tsx` with selection-mode gestures.
 
 ## 7. Components — Canvas interaction
 
@@ -225,11 +226,14 @@
       `Ctrl/Cmd+Shift+Z` / `Ctrl/Cmd+Y` (undo/redo with selection
       clear), `Ctrl/Cmd+C` / `Ctrl/Cmd+X` / `Ctrl/Cmd+V` (clipboard).
       Tool-switch hotkeys (V/B/L) arrive in slice C.
-- [ ] 7.7 Mirror the changes in `useCanvasTouchInteraction.ts`:
-      branch on `tool` for single-finger paths, gate long-press =
-      erase behind `tool === 'draw'`, route ghost commit/cancel
-      through toolbar buttons (no auto-commit on lift). Run
-      `npm run typecheck`. Manual verify on mobile preview.
+- [x] 7.7 `useCanvasTouchInteraction.ts` branches on tool at the top
+      of `handleTouchStart`. Selection-mode single-finger drag handles
+      marquee (rect), lasso, ghost-drag, and axis-picker confirm.
+      Long-press → erase is bypassed when a select tool is active
+      (the select branch returns before the long-press timer is set
+      up). `handleTouchEnd` commits marquee/lasso on lift; ghost is
+      NEVER auto-committed on lift — explicit Confirm tap required
+      via the floating `GhostActionBar`.
 
 ## 8. Tests
 
