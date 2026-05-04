@@ -1,12 +1,17 @@
 import { useRef, useState } from 'react';
 import { useCanvasStore, useUIStore } from '../../store';
 import { exportToJSON, importFromJSON } from '../../utils/exportImport';
-import { generatePDF } from '../../utils/printPDF';
+import {
+  generatePDF,
+  fitOnePage,
+  type PrintOrientation,
+} from '../../utils/printPDF';
 import styles from './Sidebar.module.css';
 
 export const ExportImport: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [cellsPerPage, setCellsPerPage] = useState(25);
+  const [orientation, setOrientation] = useState<PrintOrientation>('portrait');
 
   const { width, height, lines, highlights, currentColor, getCellHighlightColor, loadScheme } = useCanvasStore();
   const { showToast } = useUIStore();
@@ -55,15 +60,20 @@ export const ExportImport: React.FC = () => {
       highlights,
       getCellHighlightColor,
       cellsPerPageX: cellsPerPage,
+      orientation,
     });
     showToast('PDF создан', 'success');
   };
 
   const handleCellsPerPageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10);
-    if (!isNaN(value) && value >= 1 && value <= 100) {
+    if (!isNaN(value) && value >= 1) {
       setCellsPerPage(value);
     }
+  };
+
+  const handleFitToPage = () => {
+    setCellsPerPage(fitOnePage(width, height, orientation));
   };
 
   return (
@@ -78,16 +88,33 @@ export const ExportImport: React.FC = () => {
         </button>
         <div className={styles.printSettings}>
           <label className={styles.printSettingsLabel}>
+            Ориентация:
+            <select
+              value={orientation}
+              onChange={(e) => setOrientation(e.target.value as PrintOrientation)}
+              className={styles.printSettingsSelect}
+            >
+              <option value="portrait">Портретная</option>
+              <option value="landscape">Альбомная</option>
+            </select>
+          </label>
+          <label className={styles.printSettingsLabel}>
             Клеток на страницу:
             <input
               type="number"
               min="1"
-              max="100"
               value={cellsPerPage}
               onChange={handleCellsPerPageChange}
               className={styles.printSettingsInput}
             />
           </label>
+          <button
+            className={styles.printSettingsFitButton}
+            onClick={handleFitToPage}
+            title="Подобрать столько клеток, чтобы вся канва уместилась на 1 страницу"
+          >
+            ⤢ Уместить на 1 страницу
+          </button>
         </div>
         <button className={styles.exportImportButton} onClick={handlePrint}>
           Печать PDF

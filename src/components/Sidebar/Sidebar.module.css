@@ -513,6 +513,9 @@
 }
 
 .printSettings {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   padding: 8px 0;
 }
 
@@ -525,7 +528,7 @@
 }
 
 .printSettingsInput {
-  width: 60px;
+  width: 80px;
   height: 28px;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -543,4 +546,35 @@
 .printSettingsInput::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+.printSettingsSelect {
+  height: 28px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  background-color: white;
+  cursor: pointer;
+  margin-left: 8px;
+  padding: 0 4px;
+}
+
+.printSettingsSelect:focus {
+  outline: none;
+  border-color: #999;
+}
+
+.printSettingsFitButton {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 13px;
+  color: #333;
+  cursor: pointer;
+}
+
+.printSettingsFitButton:hover {
+  background-color: #f0f0f0;
 }
