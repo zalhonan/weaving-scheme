@@ -770,10 +770,27 @@ Click on row tail          ->  handleClick()         ->  drawFullLine()
 ## Performance Considerations
 
 1. **Map<string, Line>** - O(1) operations
-2. **Visible-only rendering** - Calculate visible cell range from viewport
-3. **requestAnimationFrame** - Batch render calls
-4. **Debounced persistence** - Save to localStorage max once per 500ms
-5. **Device pixel ratio** - Sharp rendering on HiDPI displays
+2. **Viewport culling** - `renderCanvas` computes the visible cell range
+   from `offsetX`, `offsetY`, `cellSize`, and canvas client dims (with ±1
+   cell padding for fractional offsets). Cell highlights, grid lines,
+   tails, numbers, and user lines all iterate only this range. Without
+   culling a 1000×1000 canvas would iterate 1M cells per frame.
+3. **Adaptive rendering profile** - At small `cellSize`, layers degrade
+   or disappear so the canvas stays coherent at extreme zoom-out:
+   - `cellSize < 8`: row/column numbers hidden (would overlap)
+   - `cellSize < 4`: tails hidden (subpixel)
+   - `cellSize < 2.5`: minor grid hidden
+   - `cellSize < 1.5`: major grid hidden; user lines render as filled
+     squares instead of strokes (a 2 px stroke would smear across cells)
+   - All thresholds sit below 8 px so behavior at default zoom is
+     bit-for-bit identical to the pre-adaptive renderer.
+4. **requestAnimationFrame** - Batch render calls
+5. **Debounced persistence** - Save to localStorage max once per 500ms
+6. **Device pixel ratio** - Sharp rendering on HiDPI displays
+7. **Multiplicative zoom step** - `useViewportStore.zoom(factor, x, y)`
+   multiplies `cellSize`, so each wheel tick / pinch frame is a constant
+   percentage change. Felt speed at default zoom matches the prior
+   additive ±2 step (factor ≈ 1.08 → +2 px at cellSize 25).
 
 ---
 

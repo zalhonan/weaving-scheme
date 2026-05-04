@@ -3,6 +3,7 @@ export { Statistics } from './Statistics';
 export { ResetButton } from './ResetButton';
 export { CanvasSizeControl } from './CanvasSizeControl';
 export { UndoRedo } from './UndoRedo';
+export { ViewControl } from './ViewControl';
 export { HotkeysInfo } from './HotkeysInfo';
 export { SelectionTool } from './SelectionTool';
 export { SelectionOps } from './SelectionOps';

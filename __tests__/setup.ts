@@ -24,3 +24,23 @@ if (typeof globalThis.localStorage === 'undefined') {
     },
   } as Storage;
 }
+
+// Stub the bare minimum of `window` the renderer + selection-store touch.
+// Renderer reads `window.devicePixelRatio`; selection-store registers a
+// `storage`-event listener at module load. A no-op addEventListener satisfies
+// both without pulling in jsdom.
+if (typeof globalThis.window === 'undefined') {
+  (
+    globalThis as unknown as {
+      window: {
+        devicePixelRatio: number;
+        addEventListener: (...a: unknown[]) => void;
+        removeEventListener: (...a: unknown[]) => void;
+      };
+    }
+  ).window = {
+    devicePixelRatio: 1,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+}

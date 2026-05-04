@@ -9,7 +9,7 @@ import styles from './Canvas.module.css';
 export const Canvas: React.FC = () => {
   const { canvasRef } = useCanvasRenderer();
   const { canvasRef: overlayRef } = useOverlayRenderer();
-  useCanvasShortcuts();
+  useCanvasShortcuts(canvasRef);
 
   const {
     isPanning,

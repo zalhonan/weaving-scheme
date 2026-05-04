@@ -414,18 +414,18 @@ export function useCanvasTouchInteraction(
         const currentDistance = getDistance(p1, p2);
         const currentMidpoint = getMidpoint(p1, p2);
 
-        // Calculate zoom
+        // Pinch zoom — feed the ratio directly into the multiplicative
+        // zoom contract. Update initialDistance per frame so each subsequent
+        // event computes an incremental ratio relative to the last frame.
         if (gestureState.current.initialDistance > 0) {
           const scale = calculatePinchScale(
             currentDistance,
             gestureState.current.initialDistance
           );
 
-          // Convert scale to zoom delta
-          const zoomDelta = (scale - 1) * 10;
-
-          if (Math.abs(zoomDelta) > 0.1) {
-            zoom(zoomDelta, currentMidpoint.x, currentMidpoint.y);
+          // Dead-zone around 1.0 to suppress jitter from finger micro-motion.
+          if (Math.abs(scale - 1) > 0.01) {
+            zoom(scale, currentMidpoint.x, currentMidpoint.y);
             gestureState.current.initialDistance = currentDistance;
           }
         }

@@ -5,7 +5,7 @@ export interface Viewport {
 }
 
 export const VIEWPORT_LIMITS = {
-  MIN_CELL_SIZE: 8,
+  MIN_CELL_SIZE: 0.5,
   MAX_CELL_SIZE: 50,
   DEFAULT_CELL_SIZE: 25,
 } as const;

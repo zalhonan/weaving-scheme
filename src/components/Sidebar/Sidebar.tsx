@@ -4,6 +4,7 @@ import { Statistics } from './Statistics';
 import { ResetButton } from './ResetButton';
 import { CanvasSizeControl } from './CanvasSizeControl';
 import { UndoRedo } from './UndoRedo';
+import { ViewControl } from './ViewControl';
 import { HotkeysInfo } from './HotkeysInfo';
 import { ColorPalette } from './ColorPalette';
 import { ExportImport } from './ExportImport';
@@ -94,6 +95,7 @@ export const Sidebar: React.FC = () => {
             <ColorPalette />
             <Statistics />
             <CanvasSizeControl />
+            <ViewControl />
             <UndoRedo />
             <ExportImport />
             <ResetButton />

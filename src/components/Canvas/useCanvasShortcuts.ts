@@ -3,6 +3,7 @@ import {
   useCanvasStore,
   useSelectionStore,
   useTemporalStore,
+  useViewportStore,
 } from '../../store';
 import { getLinesInMask } from '../../utils/canvas/selection/derivedLines';
 
@@ -31,8 +32,11 @@ const arrowDelta = (key: string): { dx: number; dy: number } | null => {
  *   Delete | Backspace   delete lines belonging to the selection
  *   Enter           commit active ghost
  *   Arrow keys      nudge ghost (or start move-ghost from selection) by 1 cell
+ *   0               fit canvas to view
  */
-export function useCanvasShortcuts(): void {
+export function useCanvasShortcuts(
+  canvasRef?: React.RefObject<HTMLCanvasElement | null>,
+): void {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -85,6 +89,18 @@ export function useCanvasShortcuts(): void {
       if (isMod && key === 'v') {
         if (sel.clipboard && !sel.ghost) {
           sel.pasteFromClipboard();
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // Fit canvas to view (Figma/Sketch/Photoshop convention).
+      if (!isMod && key === '0') {
+        const canvas = canvasRef?.current;
+        if (canvas) {
+          useViewportStore
+            .getState()
+            .fitToView(canvas.clientWidth, canvas.clientHeight);
           e.preventDefault();
         }
         return;
@@ -161,5 +177,5 @@ export function useCanvasShortcuts(): void {
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [canvasRef]);
 }

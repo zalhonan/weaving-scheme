@@ -51,6 +51,10 @@ type MovementDirection = 'horizontal' | 'vertical' | null;
 const BOUNDARY_PROXIMITY_THRESHOLD = 0.35;
 // Minimum screen movement to determine direction
 const MIN_MOVEMENT_TO_DETECT_DIRECTION = 3;
+// Multiplicative zoom step per wheel tick. Calibrated so that at default
+// cellSize=25 one tick yields ±2 px — matching the felt speed of the prior
+// additive ±2 step (regression requirement).
+const ZOOM_FACTOR = 1.08;
 
 export function useCanvasInteraction(
   canvasRef: React.RefObject<HTMLCanvasElement | null>
@@ -592,8 +596,8 @@ export function useCanvasInteraction(
     (e: React.WheelEvent<HTMLCanvasElement>) => {
       // Note: preventDefault is called in Canvas.tsx useEffect with passive: false
       const { x, y } = getCanvasCoords(e);
-      const delta = e.deltaY > 0 ? -2 : 2;
-      zoom(delta, x, y);
+      const factor = e.deltaY > 0 ? 1 / ZOOM_FACTOR : ZOOM_FACTOR;
+      zoom(factor, x, y);
     },
     [getCanvasCoords, zoom]
   );

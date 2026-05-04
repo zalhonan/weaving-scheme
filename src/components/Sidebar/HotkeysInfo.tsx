@@ -6,6 +6,7 @@ const desktopHotkeys = [
   { keys: 'ПКМ', description: 'Стереть линию' },
   { keys: 'СКМ + drag', description: 'Панорамирование' },
   { keys: 'Колесо мыши', description: 'Масштабирование' },
+  { keys: '0', description: 'Вписать канву в экран' },
   { keys: 'Shift + ЛКМ', description: 'Протянуть линию до границы' },
   { keys: 'Ctrl + ЛКМ', description: 'Заливка контура' },
   { keys: 'ЛКМ на номер', description: 'Закрасить строку/столбец' },
